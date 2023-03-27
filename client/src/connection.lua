@@ -242,7 +242,12 @@ function connection:setLoginFailResponse(loginFailResponse)
     return true
 end
 
-
+function connection.chatCardResponse(chatCards) end
+function connection:setChatCardResponse(chatCardResponseFunction)
+    if type(chatCardResponseFunction) ~= "function" then return false end
+    self.chatCardResponse = chatCardResponseFunction
+    return true
+end
 
 function connection.messageResponse(data) end
 function connection:setMessageResponse(messageResponseFunction)
@@ -307,7 +312,6 @@ local function initClientCallbacks()
         session_id = data.sessionID
         shared_key = zen.key_exchange(client_secret_key, data.spk)
         connection.connectionEstablished = true
-        print("connectionEstablished")
     end)
 
     sock_client:on("reg-success", function(data)
@@ -331,9 +335,12 @@ local function initClientCallbacks()
 
     sock_client:on("login-success", function(data)
         status, data = messageFromServer(data)
-        if not status then
+        if not status or not data then
             connection.loginFailResonse()
             return
+        end
+        if data.chatCards then
+            connection.chatCardResponse(data.chatCards)
         end
         connection.loggedIn = true
         login_username = data.username
@@ -456,11 +463,11 @@ function connection:update()
     if currentTime > last_server_active + 5 and currentTime > lastPing + 5 then
         lastPing = currentTime
         sock_client:send("ping", session_id)
-        print("serverPing")
+        -- print("sserverPing")
         if currentTime > last_server_active + 10 then
             connection.connectionEstablished = false
             sock_client:connect()
-            print("conn")
+            -- print("conn")
         end
 
     end

@@ -181,6 +181,42 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
+function database:getUserCardsList(username)
+    local chatsPath = "users/"..username.."/chats/"
+    if not fs.getInfo(chatsPath) then return false, "can't find user chat directory" end
+
+    local chatsList = fs.getDirectoryItems(chatsPath)
+
+    local cardList = {}
+
+    --iterate through the user's chats 
+    for _,chatName in pairs(chatsList) do
+        
+        local chatMessages = fs.getDirectoryItems(chatsPath..chatName.."/messages")
+        if not chatMessages then return false, "can't find messages directory" end
+
+        local lastMessage
+
+        -- if there are no messages, set the message timestamp to the current time
+        if #chatMessages == 0 then
+            lastMessage = math.floor((self.epochOffset + love.timer.getTime())*100)
+        else
+        -- otherwise, set the timestamp to the most recent message
+            lastMessage = tonumber(chatMessages[1])
+            for i,message in pairs(chatMessages) do
+                local messageTime = tonumber(message)
+                if lastMessage < messageTime then
+                    lastMessage = messageTime
+                end
+            end
+        end
+
+        table.insert(cardList, {chatName, lastMessage})
+    end
+
+    return true, cardList
+end
+
 function database.openUserChat(username1, username2, bypass)
     local user1ChatsPath = "users/"..username1.."/chats"
     local user2ChatsPath = "users/"..username2.."/chats"

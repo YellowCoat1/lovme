@@ -12,7 +12,7 @@ local zen = require 'luazen' -- cryptography
 -- server modules
 local crypto = require 'crypto'
 local database = require 'database'
-local loginTimeout = require 'loginTimeout'
+-- local loginTimeout = require 'loginTimeout'
 
 -- class user
 local user = require 'user'
@@ -119,6 +119,9 @@ local function userLogin(data, client)
     if status and result then
         sendTable.salt = result
     end
+
+    status, result = database:getUserCardsList(sendTable.username)
+    if status then sendTable.chatCards = result end
 
     sendToUser(client, activeUser, "login-success", sendTable)
 
@@ -245,7 +248,6 @@ local function registerUser(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    loginTimeout.registerAttempt(activeUser)
     -- make sure they havent registered too many accounts
     if activeUser.registerAttempts >= 3 then
         local sendTable = {}
@@ -300,7 +302,6 @@ local function loadServerCallbacks()
     LovmeServer:on("disconnect", function() end) -- empty disconnect function, purely to suppress errors
     LovmeServer:on("connected", function(data, client) pcall(userConnect, data, client) end) -- on user connect
     prepareServerCallback("login", userLogin)
-    -- LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
     LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
     LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end) --request public key of a user
     prepareServerCallback("database_salt_req", database_salt_request) --request public key of a user
@@ -352,7 +353,5 @@ function love.update()
     for _, v in pairs(removeTable) do
         ActiveUsers[v] = nil
     end
-
-    -- updates active clients
 
 end

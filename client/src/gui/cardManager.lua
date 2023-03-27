@@ -10,84 +10,21 @@ local chatAddBoxHeight = 60
 -- ordered chat list
 -- 1st will be 1st displayed, and so on
 cardManager.chatList = {}
--- cardManager.chatEnterCallback = function() end
+
 -- testing code
-do
-    local chatList = cardManager.chatList
+
+-- do
+--     local chatList = cardManager.chatList
     
-    local user = {}
-    user.name = "bob"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "joe"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "george"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "harry"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ce"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ca"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "cg"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "aa"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ab"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "bob"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "joe"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "george"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "harry"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ce"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ca"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "cg"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "aa"
-    user.last = 10
-    table.insert(chatList, user)
-    local user = {}
-    user.name = "ab"
-    user.last = 10
-    table.insert(chatList, user)
-end
+--     local user = {}
+--     user.name = "bob"
+--     user.last = 10
+--     table.insert(chatList, user)
+--     local user = {}
+--     user.name = "joe"
+--     user.last = 10
+--     table.insert(chatList, user)
+-- end
 
 -- how much the card menu is scrolled up or down
 cardManager.yOffset = 0
@@ -100,11 +37,17 @@ cardManager.addedVelocity = 0
 connection.setContactListResponse(function(data)
     cardManager.chatList = data
 end)
+connection.setChatCardResponse(function(chatCardCollection)
+    for _, card in ipairs(chatCardCollection) do
+        local cardTable = {}
+        cardTable.name = card[1]
+        cardTable.last = card[2]
+        cardManager.chatlist:insert(cardTable)
+    end
+end)
 
-connection.request_contact_list()
 
 function cardManager:draw()
-
     local bottomYOffset = -((#self.chatList-1) * boxHeight) 
 
     -- if scrolled above the top
