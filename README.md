@@ -25,5 +25,4 @@ go figure out [how to use love2d](https://love2d.org/wiki/Getting_Started) first
 
 #### uncompleted parts
 - client side message & card display
-- server card storage
-- pretty much most of the client side ui
+- part of the client side ui
