@@ -1,4 +1,4 @@
-local mainScreen = Screen:extend()
+local chatsScreen = Screen:extend()
 
 local cached = require 'cached'
 local textBar = require 'gui.textBar'
@@ -13,7 +13,7 @@ local chatAddBoxHeight = 60
 local chatAddTextOffset = (chatAddBoxHeight-Font:getHeight("|"))/4
 local getTime = love.timer.getTime
 
-function mainScreen:new()
+function chatsScreen:new()
     self:clearClickables()
 
     local chatAddTextBox = textBar(10, chatAddTextOffset, love.graphics.getWidth(), false, true, true)
@@ -41,7 +41,7 @@ function mainScreen:new()
     end)
 end
 
-function mainScreen:chatAdd()
+function chatsScreen:chatAdd()
     local chatAddTextBox = self.textBoxes[1]
     local chatAddText = chatAddTextBox.text
     connection.contactAdd(chatAddText)
@@ -49,11 +49,11 @@ function mainScreen:chatAdd()
     chatAddTextBox:setText("")
 end
 
-function mainScreen:mouseClickSettable(x, y)
+function chatsScreen:mouseClickSettable(x, y)
     cardManager:mouseClick(x, y)
 end
 
-function mainScreen:setDraw()
+function chatsScreen:setDraw()
     
     -- draw chat cards
     cardManager:draw()
@@ -69,10 +69,10 @@ function mainScreen:setDraw()
     end
 end
 
-function mainScreen:keyPressSettable(key)
+function chatsScreen:keyPressSettable(key)
     if key == "return" then 
         self:chatAdd()
     end
 end
 
-return mainScreen
+return chatsScreen

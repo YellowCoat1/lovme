@@ -24,13 +24,12 @@ database.epochOffset = os.time() - math.floor(love.timer.getTime())
 
 -- test if a username has only valid characters
 local function test_username(username)
+    -- if type(username) ~= "string" then return false end
     assert(type(username) == "string", "invalid type in test_username. type: " .. type(username))
-    -- banned characters: spaces, [, ], (, ), :, ;, %
-    if username:find("[%s%[%]%(%)%.%:%;%%]") then
+    if username:match("%W") then
         return false
     end
     return true
-        
 end
 
 --[[
@@ -45,7 +44,7 @@ end
 function database.createUserProfile(username, pass, databaseSalt, database_public)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
-    
+
     -- username and password should be correct
     if not test_username(username) then return false, "invalid username" end
     if not test_username(pass) then return false, "invalid password" end

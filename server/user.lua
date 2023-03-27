@@ -9,6 +9,8 @@ function user:new(sessionID, sharedKey, client)
     self.lastActive = love.timer.getTime()
     self.waitingForPing = false
     self.loggedInUsername = nil
+    self.registerAttempts = 0
+    self.loginAttempts = 0
 end
 
 -- called whenever a user is seen active

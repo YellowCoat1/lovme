@@ -18,24 +18,20 @@ local registerY = 350
 
 -- login textbars
 local usernameTextbar = textBar(0, loginY+70, love.graphics.getWidth(), false, true, true, "color1")
-usernameTextbar:setText("(user)")
 usernameTextbar:setLimit(16)
 table.insert(textBoxes, usernameTextbar)
 
 local passwordTextbar = textBar(0, loginY+160, love.graphics.getWidth(), false, false, true, "color1")
-passwordTextbar:setText("(pass)")
 passwordTextbar:setLimit(16)
 table.insert(textBoxes, passwordTextbar)
 
 -- register textbars
 local usernameRegTextbar = textBar(0, registerY+70, love.graphics.getWidth(), false, false, true, "color1")
-usernameTextbar:setText("(user)")
-usernameTextbar:setLimit(16)
+usernameRegTextbar:setLimit(16)
 table.insert(textBoxes, usernameRegTextbar)
 
 local passwordRegTextbar = textBar(0, registerY+160, love.graphics.getWidth(), false, false, true, "color1")
-passwordTextbar:setText("(pass)")
-passwordTextbar:setLimit(16)
+passwordRegTextbar:setLimit(16)
 table.insert(textBoxes, passwordRegTextbar)
 
 -- on login fail
@@ -133,10 +129,25 @@ local function enterKeyPressed()
     end
 end
 
+-- tests if a username or password is only valid characters
+local function inputValid(username)
+    assert(type(username) == "string", "invalid type in test_username. type: " .. type(username))
+    -- banned characters: spaces, [, ], (, ), :, ;, %
+    if username:find("[%s%[%]%(%)%.%:%;%%]") then
+        return false
+    end
+    return true
+end
+
 function login:registerAttempt()
     local username = usernameRegTextbar.text
     local password = passwordRegTextbar.text
     if username == "" or password == "" then return end
+
+    if not inputValid(username) or not inputValid(password) then
+        login:registerFail("symbols")
+        return
+    end
 
     local registerResult, reason = connection.registerUser(username, password)
     
@@ -145,15 +156,16 @@ function login:registerAttempt()
         registerResponseText[1] = "connection error :P"
         registerResponseText[2] = "(are you connected?)"
     else
-        usernameRegTextbar.text = ""
-        passwordRegTextbar.text = ""
+        usernameRegTextbar:setText("")
+        passwordRegTextbar:setText("")
     end
 end
 
 function login:registerSuccess(username)
+    if not username then username = "NULL" end
     registerResponseTimer = love.timer.getTime() + 2
-    registerResponseText[1] = "register success!"
-    registerResponseText[2] = "user " .. username .. " registered!" 
+    registerResponseText[1] = "success! registered"
+    registerResponseText[2] = username 
 end
 
 function login:registerFail(errorCode)
@@ -164,9 +176,17 @@ function login:registerFail(errorCode)
         registerResponseText[2] = "unknown error!"
     elseif errorCode == "usrExist" then
         registerResponseText[2] = "user already exists!"
+    elseif errorCode == "tooManyAtmpt" then
+        registerResponseText[2] = "too many attempts!"
     elseif errorCode == "serverErr" then
         registerResponseText[2] = "server error :("
+    elseif errorCode == "symbols" then
+        registerResponseText[2] = "no symbols allowed"
+    elseif errorCode == "passLen" then
+        registerResponseText[2] = "your password is too short!"
     end
+
+    print(errorCode)
 end
 
 
@@ -175,10 +195,6 @@ function login:loginAttempt()
     local username = usernameTextbar.text
     local password = passwordTextbar.text
     local connectionReqStatus = connection:login(username, password)
-    
-    -- temp autologin
-    -- connection:forceLogin()
-    -- do return end
     
     if connectionReqStatus then
         passwordTextbar:setText("")

@@ -311,6 +311,7 @@ sock_client:on("reg-success", function(data)
     status, data = messageFromServer(data)
     if not data then
         connection.registerFailResponse()
+        return
     -- elseif #data == 0 then
     --     connection.registerFailResponse()
     end
@@ -318,8 +319,9 @@ sock_client:on("reg-success", function(data)
 end)
 sock_client:on("reg-fail", function(data)
     local status, data = messageFromServer(data)
+    local errorCode
     if status then
-        local errorCode = data.errorCode
+        errorCode = data.errorCode
     end
     connection.registerFailResponse(errorCode)
 end)
@@ -413,6 +415,10 @@ sock_client:on("pong", function ()
     messageFromServer()
 end)
 
+sock_client:on("disconnect", function()
+    sendToServer("ping", {})
+end)
+
 
 -- for debugging
 sock_client:on("usr_error", function(data)
@@ -444,6 +450,7 @@ function connection:update()
     elseif last_server_active + 20 < time then
         self.connectionEstablished = false
         hardDisconnect()
+        sendToServer("ping", {})
     end
 end
 

@@ -12,6 +12,7 @@ local zen = require 'luazen' -- cryptography
 -- server modules
 local crypto = require 'crypto'
 local database = require 'database'
+local loginTimeout = require 'loginTimeout'
 
 -- class user
 local user = require 'user'
@@ -39,6 +40,7 @@ end
 
 -- processes a message from the user, decrypting and returning data (plus the session id)
 local function user_message(data, client)
+ 
     local sessionID = data.SID
     if not data.SID or not data.data then
         client:send("usr_error_de", "malformed_req")
@@ -97,6 +99,8 @@ local function userLogin(data, client)
         return false
     end
     local activeUser = ActiveUsers[sessionID]
+
+    print("eee", pcall(activeUser:getAddress()))
 
     status, result = database:checkPassEquality(data.user, data.pass)
     if status and result then
@@ -242,6 +246,16 @@ local function registerUser(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
+    loginTimeout.registerAttempt(activeUser)
+    -- make sure they havent registered too many accounts
+    if activeUser.registerAttempts >= 3 then
+        local sendTable = {}
+        sendTable.errorCode = "tooManyAtmpt"
+        sendToUser(client, activeUser, "reg-fail", sendTable)
+        return
+    end
+
+
     local registerUsername, registerPass, registerDatabaseSalt, registerPubKey = data.user, data.pass, data.dbSalt, data.dbPubKey
 
     if not registerUsername or not registerPass or not registerDatabaseSalt or not registerPubKey then
@@ -252,11 +266,13 @@ local function registerUser(data, client)
     status, result = database.createUserProfile(registerUsername, registerPass, registerDatabaseSalt, registerPubKey)
     if not status then 
         local sendTable = {}
+
         if result == "user already exists" then
             sendTable.errorCode = "usrExist"
         else
             sendTable.errorCode = "serverErr"
         end
+
         sendToUser(client, activeUser, "reg-fail", sendTable)
         return 
     end
@@ -264,6 +280,18 @@ local function registerUser(data, client)
     local sendTable = {}
     sendTable.username = registerUsername
     sendToUser(client, activeUser, "reg-success", sendTable)
+    activeUser.registerAttempts = activeUser.registerAttempts + 1
+end
+
+local function prepareServerCallback(name, callbackFunction)
+    local enteredFunction = function(data, client)
+        local status, result = pcall(callbackFunction, data, client)
+        if not status then
+            print("server error in callback "..name..": " .. result)
+        end
+    end
+    
+    LovmeServer:on(name, enteredFunction)
 end
 
 -- connect user functions to sock.lua callbacks
@@ -271,13 +299,14 @@ local function loadServerCallbacks()
     LovmeServer:on("ping", function(data, client) pcall(emptyPing, data, client) end ) -- ping from user
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("disconnect", function() end) -- empty disconnect function, purely to suppress errors
+
     LovmeServer:on("connected", function(data, client) pcall(userConnect, data, client) end) -- on user connect
     LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
     LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
     LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end) --request public key of a user
-    LovmeServer:on("database_salt_req", function(data, client) pcall(database_salt_request, data, client) end) --request public key of a user
-    LovmeServer:on("message_req", function(data, client) pcall(message_request, data, client) end) -- request a message
-    LovmeServer:on("register", function(data, client) pcall(registerUser, data, client) end) -- user register
+    prepareServerCallback("database_salt_req", database_salt_request) --request public key of a user
+    prepareServerCallback("message_req", message_request) -- request a message
+    prepareServerCallback("register", registerUser) -- user register
 end
 
 -- -- on load

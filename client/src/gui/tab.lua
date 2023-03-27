@@ -13,9 +13,8 @@ require 'gui.screen'
 local tabs = {}
 local currentTab
 
-tabs.main =         require 'gui.screens.mainScreen' ()
+tabs.main =         require 'gui.screens.chatsScreen' ()
 tabs.settings =     require 'gui.screens.settings' ()
--- tabs.chat =      require 'gui.screens.chat' ()
 
 
 
