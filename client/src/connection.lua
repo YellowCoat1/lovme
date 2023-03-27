@@ -32,9 +32,8 @@ local last_server_active = getTime()
 
 -- user message cryptography
 local database_shared_keys = {}
-local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
+local database_salt
 local database_secret
-local database_public
 
 local temp_username_store = ""
 local temp_password_store = ""
@@ -100,11 +99,27 @@ function connection:login(username, password)
 end
 
 function connection.registerUser(username, password)
+
+    if not username or not password or
+        type(username) ~= "string" or
+        type(password) ~= "string" then
+            return false, "input invalid"
+    end
+ 
+    -- generate salt and create keys based off the salt and password
+    local databaseSalt = zen.randombytes(32)
+    local databasePrivateKey = zen.argon2i(password, databaseSalt, ARGON_KB, ARGON_I)
+    local databasePublicKey = zen.x25519_public_key(databasePrivateKey)
+
     local sendTable = {}
-    sendTable.username = username
-    sendTable.password = password
-    sendTable.databaseSalt = database_salt
-    sendToServer("register", sendTable)
+    sendTable.user = username
+    sendTable.pass = password
+    sendTable.dbSalt = databaseSalt
+    sendTable.dbPubKey = databasePublicKey
+
+    local status = sendToServer("register", sendTable)
+    if not status then return false, "server send failed" end
+    return true
 end
 
 function connection:logout()
@@ -202,6 +217,19 @@ function connection.contactAdd(contactName)
     sendToServer("request_add_contact", sendTable)
 end
 
+function connection.registerResponse() end
+function connection:setRegisterResponse(registerResponseFunction)
+    if type(registerResponseFunction) ~= "function" then return false end
+    self.registerResponse = registerResponseFunction
+    return true
+end
+function connection.registerFailResponse() end
+function connection:setRegisterFailResponse(registerFailResponseFunction)
+    if type(registerFailResponseFunction) ~= "function" then return false end
+    self.registerFailResponse = registerFailResponseFunction
+    return true
+end
+
 function connection.loginResponse() end
 function connection:setLoginResponse(loginResponseFunction)
     if type(loginResponseFunction) ~= "function" then return false end
@@ -279,16 +307,37 @@ sock_client:on("key_response", function(data)
     connection.connectionEstablished = true
 end)
 
-sock_client:on("login-success", function(data)
-    connection.loggedIn = true
+sock_client:on("reg-success", function(data)
     status, data = messageFromServer(data)
+    if not data then
+        connection.registerFailResponse()
+    -- elseif #data == 0 then
+    --     connection.registerFailResponse()
+    end
+    connection.registerResponse(data.username)
+end)
+sock_client:on("reg-fail", function(data)
+    local status, data = messageFromServer(data)
+    if status then
+        local errorCode = data.errorCode
+    end
+    connection.registerFailResponse(errorCode)
+end)
+
+sock_client:on("login-success", function(data)
+    status, data = messageFromServer(data)
+    if not status then
+        connection.loginFailResonse()
+        return
+    end
+    connection.loggedIn = true
     login_username = data.username
     database_salt = data.salt 
     connection.loginResponse()
 end)
 
 sock_client:on("login-fail", function()
-    -- status, data = messageFromServer(data)
+    messageFromServer()
     temp_username_store, temp_password_store = "", ""
     connection.loginFailResponse()
 end)
@@ -324,7 +373,7 @@ end)
 sock_client:on("message_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
-    if not status or not data then print(data) return end
+    if not status or not data then --[[print(data)--]] return end
 
     
     local databaseSharedKey = database_shared_keys[data.other]
@@ -339,7 +388,7 @@ end)
 
 sock_client:on("contact_list_reply", function(data) 
     local status, contact_list = messageFromServer(data)
-    if contact_list then 
+    if status and contact_list then 
         contactListResponse(contact_list)
     else
         contactListFailResponse()
@@ -349,7 +398,7 @@ end)
 
 sock_client:on("contact_add_reply", function(data)
     local status, contactResponse = messageFromServer(data)
-    if contactResponse then
+    if status and contactResponse then
         contactAddResponse()
     end
 end)

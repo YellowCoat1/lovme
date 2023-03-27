@@ -73,8 +73,6 @@ function database.createUserProfile(username, pass, databaseSalt, database_publi
 
     -- database public key for the user
     -- used for decrpyting conversations
-    local databasePrivateKey = zen.argon2i(pass, databaseSalt, ARGON_KB, ARGON_I)
-    local databasePublicKey = zen.x25519_public_key(databasePrivateKey)
     saveTable.DatabaseSalt = databaseSalt
     saveTable.DatabasePublicKey = databasePublicKey
 

@@ -26,7 +26,7 @@ local height = love.graphics.getHeight()
 
 local loginUp = true
 local login = require 'gui.login'
-connection:setLoginResponse(function() loginUp = false print("EEE") end)
+connection:setLoginResponse(function() loginUp = false end)
 
 -- contact list
 local contactList = cached.getValue("contactList")

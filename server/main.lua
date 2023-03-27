@@ -242,20 +242,27 @@ local function registerUser(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    local loginUsername, loginPass, loginDatabaseSalt, loginPubKey = data.username, data.password, data.databaseSalt, data.databasePublicKey
+    local registerUsername, registerPass, registerDatabaseSalt, registerPubKey = data.user, data.pass, data.dbSalt, data.dbPubKey
 
-    if not loginUsername or not loginPass or not loginDatabaseSalt or not loginPubKey then
-        
-        userSendError(client, activeUser, "malformed_message")
+    if not registerUsername or not registerPass or not registerDatabaseSalt or not registerPubKey then
+        userSendError(client, activeUser, "malformed_message") 
         return
     end
 
-    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabaseSalt, loginPubKey)
+    status, result = database.createUserProfile(registerUsername, registerPass, registerDatabaseSalt, registerPubKey)
     if not status then 
+        local sendTable = {}
+        if result == "user already exists" then
+            sendTable.errorCode = "usrExist"
+        else
+            sendTable.errorCode = "serverErr"
+        end
         sendToUser(client, activeUser, "reg-fail", sendTable)
         return 
     end
 
+    local sendTable = {}
+    sendTable.username = registerUsername
     sendToUser(client, activeUser, "reg-success", sendTable)
 end
 

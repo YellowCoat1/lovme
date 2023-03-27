@@ -44,6 +44,13 @@ connection:setLoginFailResponse(function()
     login.loginFail()
 end)
 
+connection:setRegisterResponse(function(username)
+    login:registerSuccess(username)
+end)
+connection:setRegisterFailResponse(function(errorCode)
+    login:registerFail(errorCode)
+end)
+
 local function drawLogin()
     drawingHelper:text("Login", "color2", 0, loginY)
 
@@ -127,17 +134,39 @@ local function enterKeyPressed()
 end
 
 function login:registerAttempt()
-    if usernameRegTextbar.text == "" or passwordRegTextbar.text == "" then return end
-    usernameRegTextbar.text = ""
-    passwordRegTextbar.text = ""
+    local username = usernameRegTextbar.text
+    local password = passwordRegTextbar.text
+    if username == "" or password == "" then return end
 
-    -- local registerResult = connection:registerUser(username, login)
-
-    -- if not connection.login then
+    local registerResult, reason = connection.registerUser(username, password)
+    
+    if not registerResult then
         registerResponseTimer = love.timer.getTime() + 2
-        registerResponseText[1] = "server error :P"
+        registerResponseText[1] = "connection error :P"
         registerResponseText[2] = "(are you connected?)"
-    -- end
+    else
+        usernameRegTextbar.text = ""
+        passwordRegTextbar.text = ""
+    end
+end
+
+function login:registerSuccess(username)
+    registerResponseTimer = love.timer.getTime() + 2
+    registerResponseText[1] = "register success!"
+    registerResponseText[2] = "user " .. username .. " registered!" 
+end
+
+function login:registerFail(errorCode)
+    registerResponseTimer = love.timer.getTime() + 2
+    registerResponseText[1] = "register fail!"
+
+    if not errorCode then
+        registerResponseText[2] = "unknown error!"
+    elseif errorCode == "usrExist" then
+        registerResponseText[2] = "user already exists!"
+    elseif errorCode == "serverErr" then
+        registerResponseText[2] = "server error :("
+    end
 end
 
 
@@ -156,7 +185,7 @@ function login:loginAttempt()
         usernameTextbar:setText("")        
     else
         loginResponseTimer = love.timer.getTime() + 2
-        loginResponseText[1] = "server error :P"
+        loginResponseText[1] = "connection error :P"
         loginResponseText[2] = "(are you connected?)"
     end
 end
@@ -164,7 +193,7 @@ end
 function login.loginFail()
     loginResponseTimer = love.timer.getTime() + 2
     loginResponseText[1] = "login fail :("
-    loginResponseText[2] = "(is ur pass correct?)"
+    loginResponseText[2] = "(is your pass correct?)"
 end
 
 function login.keypressed(key)
