@@ -78,11 +78,14 @@ function connection:login(username, password)
     local database_salt = cached.getValue("database_salt")
     if not database_salt then 
         temp_username_store, temp_password_store = username, password
-        self.request_database_salt()
-        return true, "salt_req"
+        local salt_status = self.request_database_salt(username)
+        if salt_status then
+            return true, "salt_req"
+        else
+            return false, "server send failed"
+        end
     end
-
-    -- print(database_salt)
+    
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
     database_public = zen.x25519_public_key(database_secret)
 
@@ -136,7 +139,7 @@ end
 function connection.request_database_salt(username)
     if not connection.connectionEstablished then return false, "connection not established" end
     local sendTable = {}
-    sendTable.username = username
+    sendTable.user = username
     local status = sendToServer("database_salt_req", sendTable)
     if not status then return false, "server send failed" end
     return true
@@ -309,8 +312,8 @@ sock_client:on("db_key_response", function(data)
 end)
 
 sock_client:on("db_salt", function(data) 
-    local data = messageFromServer(data)
-    if not status or not data then print(data) return end
+    local status, data = messageFromServer(data)
+    if not status or not data then return end
     local salt = data.salt
     lstatus = cached.setValue("database_salt", salt)
     connection:login(temp_username_store, temp_password_store)

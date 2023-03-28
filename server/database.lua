@@ -155,19 +155,16 @@ function database.getDatabaseSalt(username)
     if not fs.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
     local rawUserData = fs.read(userpath.."/userdata")
     if not rawUserData then return false, "failed to read userdata" end
-
     local status, result = pcall( function() return bitser.loads(rawUserData) end)
     if status == false or not result then
         return false, "deserialization fail"
     end
-    local pubKey = result.DatabaseSalt
-    if not pubKey then
-        return false, "no public database key found"
+    local salt = result.DatabaseSalt
+    if not salt then
+        return false, "no salt found"
     end
-
     
-
-    return true, pubKey
+    return true, salt
 end
 
 -- checks if a user exists in the database

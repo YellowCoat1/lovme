@@ -158,13 +158,12 @@ local function database_salt_request(data, client)
     status, data, sessionID = user_message(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
-
     local username = data.user
-    local salt = database.getDatabaseSalt(username)
 
-    if salt then
+    local status, salt = database.getDatabaseSalt(username)
+    if status then
         local sendTable = {}
-        local sendTable.salt = salt
+        sendTable.salt = salt
         sendToUser(client, activeUser, "db_salt", sendTable)
     else
         sendToUser(client, activeUser, "login-fail", {}) 
@@ -269,6 +268,7 @@ local function loadServerCallbacks()
     LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
     LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
     LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end) --request public key of a user
+    LovmeServer:on("database_salt_req", function(data, client) pcall(database_salt_request, data, client) end) --request public key of a user
     LovmeServer:on("message_req", function(data, client) pcall(message_request, data, client) end) -- request a message
     LovmeServer:on("register", function(data, client) pcall(registerUser, data, client) end) -- user register
 end
@@ -281,9 +281,6 @@ function love.load(arg)
     if status == nil then io.write(err..'\n') else status() end
 
     loadServerCallbacks()
-
-    local databaseSalt = zen.randombytes(32)
-    database.createUserProfile("username", "pass", databaseSalt)
 end
 
 function ClientUpdate(id, activeUser, time)
