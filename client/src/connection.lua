@@ -293,164 +293,176 @@ function connection.hardDisconnect(hardDisconnectFunction)
 end
 
 
-sock_client:on("connect", function()
-    messageFromServer()
-    local sendTable = {}
-    sendTable.upk = client_public_key
-    sock_client:send("connected", sendTable)
-end)
 
-sock_client:on("key_response", function(data)
-    messageFromServer()
-    session_id = data.sessionID
-    shared_key = zen.key_exchange(client_secret_key, data.spk)
-    connection.connectionEstablished = true
-end)
+local function initClientCallbacks()
+    sock_client:on("connect", function()
+        messageFromServer()
+        local sendTable = {}
+        sendTable.upk = client_public_key
+        sock_client:send("connected", sendTable)
+    end)
 
-sock_client:on("reg-success", function(data)
-    status, data = messageFromServer(data)
-    if not data then
-        connection.registerFailResponse()
-        return
-    -- elseif #data == 0 then
-    --     connection.registerFailResponse()
-    end
-    connection.registerResponse(data.username)
-end)
-sock_client:on("reg-fail", function(data)
-    local status, data = messageFromServer(data)
-    local errorCode
-    if status then
-        errorCode = data.errorCode
-    end
-    connection.registerFailResponse(errorCode)
-end)
+    sock_client:on("key_response", function(data)
+        messageFromServer()
+        session_id = data.sessionID
+        shared_key = zen.key_exchange(client_secret_key, data.spk)
+        connection.connectionEstablished = true
+        print("connectionEstablished")
+    end)
 
-sock_client:on("login-success", function(data)
-    status, data = messageFromServer(data)
-    if not status then
-        connection.loginFailResonse()
-        return
-    end
-    connection.loggedIn = true
-    login_username = data.username
-    database_salt = data.salt 
-    connection.loginResponse()
-end)
+    sock_client:on("reg-success", function(data)
+        status, data = messageFromServer(data)
+        if not data then
+            connection.registerFailResponse()
+            return
+        -- elseif #data == 0 then
+        --     connection.registerFailResponse()
+        end
+        connection.registerResponse(data.username)
+    end)
+    sock_client:on("reg-fail", function(data)
+        local status, data = messageFromServer(data)
+        local errorCode
+        if status then
+            errorCode = data.errorCode
+        end
+        connection.registerFailResponse(errorCode)
+    end)
 
-sock_client:on("login-fail", function()
-    messageFromServer()
-    temp_username_store, temp_password_store = "", ""
-    connection.loginFailResponse()
-end)
+    sock_client:on("login-success", function(data)
+        status, data = messageFromServer(data)
+        if not status then
+            connection.loginFailResonse()
+            return
+        end
+        connection.loggedIn = true
+        login_username = data.username
+        database_salt = data.salt 
+        connection.loginResponse()
+    end)
 
-sock_client:on("db_key_response", function(data)
-    messageFromServer()
-    local status, data = crypto.decrypt(data, shared_key)
-    if not status or not data then return end
-    if not data.returnKey or not data.replyUsername then return end
+    sock_client:on("login-fail", function()
+        messageFromServer()
+        temp_username_store, temp_password_store = "", ""
+        connection.loginFailResponse()
+    end)
 
-    local reciever_database_public_key = data.returnKey
+    sock_client:on("db_key_response", function(data)
+        messageFromServer()
+        local status, data = crypto.decrypt(data, shared_key)
+        if not status or not data then return end
+        if not data.returnKey or not data.replyUsername then return end
 
-    
-    local database_shared_key = zen.key_exchange(database_secret, reciever_database_public_key)
+        local reciever_database_public_key = data.returnKey
 
-    database_shared_keys[data.replyUsername] = database_shared_key
+        
+        local database_shared_key = zen.key_exchange(database_secret, reciever_database_public_key)
 
-    keyResponse(database_shared_key, data.replyUsername)
+        database_shared_keys[data.replyUsername] = database_shared_key
 
-    return true
-end)
+        keyResponse(database_shared_key, data.replyUsername)
 
-sock_client:on("db_salt", function(data) 
-    local status, data = messageFromServer(data)
-    if not status or not data then return end
-    local salt = data.salt
-    lstatus = cached.setValue("database_salt", salt)
-    connection:login(temp_username_store, temp_password_store)
+        return true
+    end)
 
-
-end)
-
-sock_client:on("message_response", function(data)
-    messageFromServer()
-    local status, data = crypto.decrypt(data, shared_key)
-    if not status or not data then --[[print(data)--]] return end
-
-    
-    local databaseSharedKey = database_shared_keys[data.other]
-    if not databaseSharedKey then print("WARN: ".."no_shared_key") return end
-    local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
-    
-    print(databaseSharedKey, data.message.nonce, data.message.data, type(serializedMessage))
-    local status, message = pcall(bitser.loads, serializedMessage)
-    if not status then return print("ERROR: invalid_message_key") end
-    connection.messageResponse(message)
-end)
-
-sock_client:on("contact_list_reply", function(data) 
-    local status, contact_list = messageFromServer(data)
-    if status and contact_list then 
-        contactListResponse(contact_list)
-    else
-        contactListFailResponse()
-        return 
-    end
-end)
-
-sock_client:on("contact_add_reply", function(data)
-    local status, contactResponse = messageFromServer(data)
-    if status and contactResponse then
-        contactAddResponse()
-    end
-end)
-
-sock_client:on("ping", function()
-    messageFromServer()
-    local session_id = sock_client.test_id
-    sendToServer("pong", {})
-end)
-
-sock_client:on("pong", function ()
-    messageFromServer()
-end)
-
-sock_client:on("disconnect", function()
-    sendToServer("ping", {})
-end)
+    sock_client:on("db_salt", function(data) 
+        local status, data = messageFromServer(data)
+        if not status or not data then return end
+        local salt = data.salt
+        lstatus = cached.setValue("database_salt", salt)
+        connection:login(temp_username_store, temp_password_store)
 
 
--- for debugging
-sock_client:on("usr_error", function(data)
-    messageFromServer()
-    local status, result = crypto.decrypt(data, shared_key)
-    if not status or not result then return end
-    print("usr_error: ".. result[1])
-end)
+    end)
+
+    sock_client:on("message_response", function(data)
+        messageFromServer()
+        local status, data = crypto.decrypt(data, shared_key)
+        if not status or not data then --[[print(data)--]] return end
+
+        
+        local databaseSharedKey = database_shared_keys[data.other]
+        if not databaseSharedKey then print("WARN: ".."no_shared_key") return end
+        local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
+        
+        print(databaseSharedKey, data.message.nonce, data.message.data, type(serializedMessage))
+        local status, message = pcall(bitser.loads, serializedMessage)
+        if not status then return print("ERROR: invalid_message_key") end
+        connection.messageResponse(message)
+    end)
+
+    sock_client:on("contact_list_reply", function(data) 
+        local status, contact_list = messageFromServer(data)
+        if status and contact_list then 
+            contactListResponse(contact_list)
+        else
+            contactListFailResponse()
+            return 
+        end
+    end)
+
+    sock_client:on("contact_add_reply", function(data)
+        local status, contactResponse = messageFromServer(data)
+        if status and contactResponse then
+            contactAddResponse()
+        end
+    end)
+
+    sock_client:on("ping", function()
+        messageFromServer()
+        -- local session_id = sock_client.test_id
+        sendToServer("pong", {})
+    end)
+
+    sock_client:on("pong", function ()
+        messageFromServer()
+    end)
+
+    sock_client:on("disconnect", function()
+        sendToServer("ping", {})
+    end)
 
 
-sock_client:on("usr_error_de", function(data)
-    messageFromServer()
-    print("usr_error_de: " .. data)
-end)
+    -- for debugging
+    sock_client:on("usr_error", function(data)
+        messageFromServer()
+        local status, result = crypto.decrypt(data, shared_key)
+        if not status or not result then return end
+        print("usr_error: ".. result[1])
+    end)
 
 
+    sock_client:on("usr_error_de", function(data)
+        messageFromServer()
+        print("usr_error_de: " .. data)
+    end)
+end
+
+initClientCallbacks()
+
+local lastPing = getTime()
+local hardDisconnected = false
 
 function connection:update()
 
     sock_client:update()
 
-    local time = getTime()
+    local currentTime = getTime()
     local roundTripTime = 0.03 --sock_client:getRoundTripTime() / 1000
     local timeout = roundTripTime + 5
-    if last_server_active + timeout < time then
-        sendToServer("ping", {})
-    elseif last_server_active + 10 < time then
-        softDisconnect()
-    elseif last_server_active + 20 < time then
-        self.connectionEstablished = false
-        hardDisconnect()
-        sendToServer("ping", {})
+    
+
+    -- print(last_server_active, lastPing, currentTime)
+    if currentTime > last_server_active + 5 and currentTime > lastPing + 5 then
+        lastPing = currentTime
+        sock_client:send("ping", session_id)
+        print("serverPing")
+        if currentTime > last_server_active + 10 then
+            connection.connectionEstablished = false
+            sock_client:connect()
+            print("conn")
+        end
+
     end
 end
 

@@ -74,7 +74,9 @@ local function userSendError(client, activeUser, message)
 end
 
 local function emptyPing(data, client)
-    user_message(data, client)
+    if not data then error("data missing in ping") end
+    if not ActiveUsers[data] then return end
+    ActiveUsers[data]:updateActive()
     client:send("pong")
 end
 
@@ -99,9 +101,6 @@ local function userLogin(data, client)
         return false
     end
     local activeUser = ActiveUsers[sessionID]
-
-    print("eee", pcall(activeUser:getAddress()))
-
     status, result = database:checkPassEquality(data.user, data.pass)
     if status and result then
         activeUser.loggedInUsername = data.user
@@ -296,12 +295,12 @@ end
 
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
-    LovmeServer:on("ping", function(data, client) pcall(emptyPing, data, client) end ) -- ping from user
+    prepareServerCallback("ping", emptyPing) -- ping from user
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("disconnect", function() end) -- empty disconnect function, purely to suppress errors
-
     LovmeServer:on("connected", function(data, client) pcall(userConnect, data, client) end) -- on user connect
-    LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
+    prepareServerCallback("login", userLogin)
+    -- LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
     LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
     LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end) --request public key of a user
     prepareServerCallback("database_salt_req", database_salt_request) --request public key of a user

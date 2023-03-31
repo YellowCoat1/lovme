@@ -34,6 +34,9 @@ local passwordRegTextbar = textBar(0, registerY+160, love.graphics.getWidth(), f
 passwordRegTextbar:setLimit(16)
 table.insert(textBoxes, passwordRegTextbar)
 
+local getTime = love.timer.getTime
+local initalTime = getTime()
+
 -- on login fail
 connection:setLoginFailResponse(function()
     -- displays login fail text 
@@ -89,6 +92,14 @@ function login:draw()
 
     for _,textBox in ipairs(textBoxes) do
         textBox:draw()
+    end
+
+    -- checks connection
+
+    if not connection.connectionEstablished and getTime() > initalTime + 2 then
+        loginResponseTimer = love.timer.getTime() + 0.5
+        loginResponseText[1] = "connection error :P"
+        loginResponseText[2] = "(are you connected?)"
     end
 end
 
