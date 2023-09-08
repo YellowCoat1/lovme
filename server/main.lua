@@ -24,7 +24,7 @@ local function request_session_id()
     local session_id = zen.randombytes(8)
     for i,activeUser in LOVME.activeUsers do 
         if activeUser.session_id == session_id then
-            return request_session_id() -- thank god for proper tail calls. i already have an if and a for, not adding a while
+            return request_session_id()
         end
     end
     return session_id
