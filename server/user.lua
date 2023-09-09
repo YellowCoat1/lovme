@@ -8,7 +8,7 @@ function user:new(clientID, sharedKey)
     self.sharedKey = sharedKey
 end
 
-function user:updateTimeout()
+function user:updateActive()
     self.lastActive = love.timer.getTime()
     self.waitingForPing = false
 end
