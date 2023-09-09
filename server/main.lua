@@ -73,11 +73,14 @@ function love.load()
         local test_cpk = zen.x25519_public_key(test_csk)
         test_client:connect()
 
+
         test_client:on("connect", function()
             local sendTable = {}
             sendTable.upk = test_cpk
             test_client:send("connected", sendTable)
         end)
+
+        test_client:on("ping", function() test_client:send("pong") print("ping") end )
 
     end
 
