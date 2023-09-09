@@ -21,8 +21,7 @@ local activeUsers = {}
 
 LovmeServer = sock.newServer("localhost", SERVER_PORT)
 local test_client
-local test_csk
-local test_cpk
+local test_client2
 
 
 local function request_session_id()
@@ -67,8 +66,8 @@ function love.load()
 
     do
         test_client = sock.newClient("localhost", SERVER_PORT)
-        test_csk = zen.randombytes(32)
-        test_cpk = zen.x25519_public_key(test_csk)
+        local test_csk = zen.randombytes(32)
+        local test_cpk = zen.x25519_public_key(test_csk)
         test_client:connect()
 
         test_client:on("connect", function()
@@ -77,16 +76,6 @@ function love.load()
             test_client:send("connected", sendTable)
         end)
 
-        test_client2 = sock.newClient("localhost", SERVER_PORT)
-        test_csk = zen.randombytes(32)
-        test_cpk = zen.x25519_public_key(test_csk)
-        test_client2:connect()
-
-        test_client2:on("connect", function()
-            local sendTable = {}
-            sendTable.upk = test_cpk
-            test_client:send("connected", sendTable)
-        end)
     end
 
 end
@@ -94,7 +83,6 @@ end
 function love.update()
     -- update server
     test_client:update()
-    test_client2:update()
     LovmeServer:update()
 
     local time = love.timer.getTime()
