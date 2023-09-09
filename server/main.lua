@@ -19,7 +19,7 @@ local SERVER_PORT = 22122
 
 local activeUsers = {}
 
-LovmeServer = sock.newServer("localhost", SERVER_PORT)
+local LovmeServer = sock.newServer("localhost", SERVER_PORT)
 local test_client
 local test_csk
 local test_cpk
@@ -27,7 +27,7 @@ local test_cpk
 
 local function request_session_id()
     local new_session_id = zen.randombytes(8)
-    for _,activeUser in ipairs(LOVME.activeUsers) do
+    for _,activeUser in ipairs(activeUsers) do
         if activeUser.session_id == new_session_id then
             return request_session_id()
         end
@@ -36,16 +36,16 @@ local function request_session_id()
 end
 
 local function emptyPong(data, client)
-    LOVME.activeUsers[data.sessionID]:updateTimeout() -- updates user's last active time
+    activeUsers[data.sessionID]:updateTimeout() -- updates user's last active time
 end
 
 local function userConnect(data, client)
-    local shared = LOVME.shared_key(data.upk)
+    local shared = crypto.shared_key(data.upk)
     local session_id = request_session_id()
     print("test")
     local client_id = tostring(client.connectId)
-    LOVME.activeUsers[client_id] = user(client_id, session_id, shared)
-    print("test2", #LOVME.activeUsers)
+    activeUsers[client_id] = user(client_id, session_id, shared)
+    print("test2", #activeUsers)
 
 end
 
