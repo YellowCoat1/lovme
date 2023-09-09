@@ -11,8 +11,8 @@ crypto.dh_sk = zen.randombytes(32)
 crypto.dh_pk = zen.x25519_public_key(crypto.dh_sk)
 
 function crypto:regen_keys()
-    crypto.dh_sk = zen.randombytes(32)
-    crypto.dh_pk = zen.x25519_public_key(crypto.dh_sk)
+    self.dh_sk = zen.randombytes(32)
+    self.dh_pk = zen.x25519_public_key(crypto.dh_sk)
 end
 
 function crypto:shared_key(tPk)
