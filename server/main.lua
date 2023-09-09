@@ -19,7 +19,7 @@ local SERVER_PORT = 22122
 
 local activeUsers = {}
 
-local LovmeServer = sock.newServer("localhost", SERVER_PORT)
+LovmeServer = sock.newServer("localhost", SERVER_PORT)
 local test_client
 local test_csk
 local test_cpk
@@ -37,24 +37,23 @@ end
 
 local function emptyPong(data, client)
     local id = client.session_id
-    data = crypto.decrypt(data, id)
-    activeUsers[data.sessionID]:updateTimeout() -- updates user's last active time
+    print(id)
+    --data = crypto.decrypt(data, id)
+    activeUsers[data.sessionID]:updateActive() -- updates user's last active time
 end
 
 local function userConnect(data, client)
-    local shared = crypto.shared_key(data.upk)
+    local shared = crypto:shared_key(data.upk)
     local session_id = request_session_id()
-    print("test")
-    local client_id = tostring(client.connectId)
+    local client_id = client.connectId
     activeUsers[client_id] = user(client_id, session_id, shared)
-    print("test2", #activeUsers)
-
 end
 
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
-    LovmeServer:on("connect", function() end) -- empty connect function
+    -- LovmeServer:on("connect", function() end) -- empty connect function
     LovmeServer:on("connected", userConnect)
+    LovmeServer:on("greeting", function() print("greet") end)
 end
 
 -- -- on load
@@ -71,15 +70,31 @@ function love.load()
         test_csk = zen.randombytes(32)
         test_cpk = zen.x25519_public_key(test_csk)
         test_client:connect()
-        test_client:send("connected", {test_cpk})
+
+        test_client:on("connect", function()
+            local sendTable = {}
+            sendTable.upk = test_cpk
+            test_client:send("connected", sendTable)
+        end)
+
+        test_client2 = sock.newClient("localhost", SERVER_PORT)
+        test_csk = zen.randombytes(32)
+        test_cpk = zen.x25519_public_key(test_csk)
+        test_client2:connect()
+
+        test_client2:on("connect", function()
+            local sendTable = {}
+            sendTable.upk = test_cpk
+            test_client:send("connected", sendTable)
+        end)
     end
 
 end
 
 function love.update()
-    
     -- update server
     test_client:update()
+    test_client2:update()
     LovmeServer:update()
 
     local time = love.timer.getTime()
@@ -87,6 +102,7 @@ function love.update()
         if time + 3 > activeClient.lastActive and not activeClient.waitingForPing then
             activeClient.waitingForPing = true
             local clientObject = LovmeServer:getClientByConnectId(id)
+            if clientObject == nil then print("id missing") return end
             clientObject:send("ping")
         end
     end
