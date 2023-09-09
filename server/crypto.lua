@@ -17,7 +17,7 @@ end
 function crypto.encrypt(data, key)
     local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     data = bitser.dumps(data) -- serialize 
-    data = zen.encrypt(key, self.emptyNonce, data) -- encrypt
+    data = zen.encrypt(key, emptyNonce, data) -- encrypt
     data = zen.lzma(data) -- compress
     return data
 end
