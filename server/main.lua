@@ -48,6 +48,7 @@ local function userConnect(data, client)
     local session_id = request_session_id()
     local client_id = client.connectId
     activeUsers[client_id] = user(client_id, session_id, shared)
+    activeUsers[client_id]:updateActive()
 end
 
 local function loadServerCallbacks()
