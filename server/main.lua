@@ -36,6 +36,8 @@ local function request_session_id()
 end
 
 local function emptyPong(data, client)
+    local id = client.session_id
+    data = crypto.decrypt(data, id)
     activeUsers[data.sessionID]:updateTimeout() -- updates user's last active time
 end
 
@@ -50,7 +52,6 @@ local function userConnect(data, client)
 end
 
 local function loadServerCallbacks()
-    LovmeServer:on("ping", function(data, client) client:send("pong") end) -- recieve ping and reply with a pong
     LovmeServer:on("pong", emptyPong)
     LovmeServer:on("connect", function() end) -- empty connect function
     LovmeServer:on("connected", userConnect)
@@ -80,5 +81,14 @@ function love.update()
     -- update server
     test_client:update()
     LovmeServer:update()
+
+    local time = love.timer.getTime()
+    for id,activeClient in pairs(activeUsers) do
+        if time + 3 > activeClient.lastActive and not activeClient.waitingForPing then
+            activeClient.waitingForPing = true
+            local clientObject = LovmeServer:getClientByConnectId(id)
+            clientObject:send("ping")
+        end
+    end
 
 end
