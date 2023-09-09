@@ -90,7 +90,8 @@ function love.update()
 
     local time = love.timer.getTime()
     for id,activeClient in pairs(activeUsers) do
-        if time + 3 > activeClient.lastActive and not activeClient.waitingForPing then
+        if (time) > (activeClient.lastActive+3) and (not activeClient.waitingForPing) then
+            print(activeClient.lastActive, time)
             activeClient.waitingForPing = true
             local clientObject = LovmeServer:getClientByConnectId(id)
             if clientObject == nil then print("id missing") return end
