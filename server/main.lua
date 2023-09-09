@@ -15,7 +15,7 @@ local user = require 'user'
 
 UpdateFunctions = {}
 
-local SERVER_PORT = 22122
+local SERVER_PORT = 22123
 
 local activeUsers = {}
 
@@ -24,10 +24,11 @@ local test_client
 local test_client2
 
 
+-- generate a new session id
 local function request_session_id()
     local new_session_id = zen.randombytes(8)
     for _,activeUser in ipairs(activeUsers) do
-        if activeUser.session_id == new_session_id then
+        if activeUser.sessionID == new_session_id then
             return request_session_id()
         end
     end
@@ -35,7 +36,7 @@ local function request_session_id()
 end
 
 local function emptyPong(data, client)
-    local id = client.session_id
+    local id = client.sessionID
     print(id)
     --data = crypto.decrypt(data, id)
     activeUsers[data.sessionID]:updateActive() -- updates user's last active time
@@ -45,10 +46,8 @@ local function userConnect(data, client)
     local ServerSecKey = zen.randombytes(32)
     local ServerPubKey = zen.x25519_public_key(ServerSecKey)
     local shared = crypto.shared_key(ServerSecKey, data.upk)
-    local session_id = request_session_id()
-    local client_id = client.connectId
-    activeUsers[client_id] = user(client_id, session_id, shared)
-    activeUsers[client_id]:updateActive()
+    local sessionID = request_session_id()
+    activeUsers[sessionID] = user(sessionID, shared)
 end
 
 local function loadServerCallbacks()
@@ -86,19 +85,30 @@ function love.load()
 
 end
 
+function ClientUpdate(id, activeUser)
+
+    local time = love.timer.getTime()
+    local removeTable = {}
+
+    if time > (activeUser.lastActive+3) and (not activeUser.waitingForPing) then
+        activeUser.waitingForPing = true
+        local clientObject = LovmeServer:getClientByConnectId(id)
+        if clientObject == nil then print("id missing") return end
+        clientObject:send("ping")
+    elseif time > (activeUser.lastActive+10) then
+        table.insert(removeTable, activeUser.sessionID)
+    end
+end
+
+
 function love.update()
     -- update server
     test_client:update()
     LovmeServer:update()
 
-    local time = love.timer.getTime()
-    for id,activeClient in pairs(activeUsers) do
-        if (time) > (activeClient.lastActive+3) and (not activeClient.waitingForPing) then
-            activeClient.waitingForPing = true
-            local clientObject = LovmeServer:getClientByConnectId(id)
-            if clientObject == nil then print("id missing") return end
-            clientObject:send("ping")
-        end
+    for id,activeUser in pairs(activeUsers) do
+        ClientUpdate(id, activeUser)
+        
     end
 
 end
