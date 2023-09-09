@@ -25,8 +25,11 @@ function crypto:encrypt(data, key)
 end
 
 -- TODO
-function crypto:decrypt(data, id, nonce)
-    data =
+function crypto:decrypt(data, key)
+    data = zen.unlzma(data)
+    data = zen.decrpyt(key, self.emptyNonce, data)
+    data = bitser.loads(data)
+    return data
 end
 
 function crypto:shared_key(tPk)
