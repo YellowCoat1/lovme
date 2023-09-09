@@ -8,6 +8,8 @@ local bitser = require 'bitser' -- serialization
 local sock = require 'sock' -- networking
 local zen = require 'luazen' -- cryptography
 
+local crypto = require 'crypto'
+
 -- class user
 local user = require 'user'
 
@@ -15,8 +17,8 @@ UpdateFunctions = {}
 
 local SERVER_PORT = 22122
 
-LOVME = {}
-LOVME.activeUsers = {}
+local activeUsers = {}
+
 LovmeServer = sock.newServer("localhost", SERVER_PORT)
 local test_client
 local test_csk
@@ -60,11 +62,6 @@ function love.load()
     --* diagnostics
     local status, err = loadfile("diagnostics.lua")
     if status == nil then print(err) else status() end
-
-    --* cryptography
-    local status, err = loadfile("crypto.lua")
-    if status == nil then print(err) else status() end
-
     
     loadServerCallbacks()
 
