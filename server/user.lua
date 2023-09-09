@@ -1,18 +1,14 @@
 -- user object file
-local userClass = Object:extend()
+local user = Object:extend()
 
-function userClass:new(clientID, sharedKey, sessionID)
-    -- assert(client and sharedKey and sessionID, "AAAAAAAAAAAAAAAA (userclass creation failiure)")
+function user:new(clientID, sharedKey)
     self.clientID = clientID
-    self.lastActive = love.timer.getTime()
-    self.waitingForPing = false
-    self.sessionID = sessionID
     self.sharedKey = sharedKey
 end
 
-function userClass:updateTimeout()
+function user:updateTimeout()
     self.lastActive = love.timer.getTime()
     self.waitingForPing = false
 end
 
-return userClass
+return user
