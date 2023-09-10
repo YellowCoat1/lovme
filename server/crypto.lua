@@ -20,7 +20,6 @@ function crypto.encrypt(data, key)
         data = bitser.dumps(data) -- serialize 
         data = zen.encrypt(key, emptyNonce, data) -- encrypt
         data = zen.lzma(data) -- compress
-        error("kys")
         return data
     end)
     if not status then error("encryption failed: "..err, 2) end
