@@ -123,6 +123,15 @@ function love.load()
         test_client:on("key_response", function(data)
             test_client.test_id = data.sessionID
             test_client.shared_key = zen.key_exchange(test_csk, data.spk)
+
+            -- login
+            local sendTable = {}
+            sendTable.SID = test_client.test_id
+            sendTable.data = {}
+            sendTable.data.user = "user1"
+            sendTable.data.pass = "password"
+            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
+            test_client:send("login", sendTable)
         end)
 
         test_client:on("ping", function()
