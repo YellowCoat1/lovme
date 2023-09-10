@@ -160,7 +160,7 @@ function ClientUpdate(id, activeUser, time)
 
     -- iter through remove table and remove users
     for i, v in pairs(removeTable) do
-
+        ActiveUsers[v] = nil
     end
 end
 
