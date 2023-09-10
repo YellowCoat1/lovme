@@ -35,7 +35,7 @@ function database.createUserProfile(username, pass)
 
     -- gen salt and hashed pass
     local salt = zen.randombytes(16)
-    local hashed_pass = zen.argon2i(pass, salt, 5000, 10)
+    local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
     -- error if no users dir or if theres already a user profile
     local userpath = "users/"..username
     assert(love.filesystem.getInfo("users"), "user creation without users folder")
@@ -87,6 +87,19 @@ function database.loadUserProfile(username)
     local status, result = pcall( function() return bitser.loads(rawUserData) end)
     if status == false then result = "deserialization fail" end
     return status, result
+end
+
+function database:checkPassEquality(username, pass)
+    local status, userData = self.loadUserProfile(username)
+    if not userData or status == false then return false, "failed to load user profile: " .. userData end
+    local salt = userData.salt
+    local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
+    if hashed_pass == userData.passHash then
+        return true, true
+    else
+        return true, false
+    end
+
 end
 
 
