@@ -108,7 +108,5 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
-print(database.createUserProfile("eee", "aaa"))
-
 -- database location: ~/.local/share/love/LOVME_server
 return database
