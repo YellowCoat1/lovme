@@ -48,6 +48,14 @@ function database.createUserProfile(username, pass)
     return true
 end
 
+function database.removeUserProfile(username)
+    local userpath = "users/"..username
+    if not love.filesystem.getInfo(userpath) then return false, "user does not exist" end
+    local status = love.filesystem.remove(userpath)
+    if status == false then return false, "failed to remove user" end
+    return true
+end
+
 
 
 -- print(status, err)
