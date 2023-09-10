@@ -25,6 +25,29 @@ local function test_username(username)
 end
 
 
+function database.createUserProfile(username, pass)
+
+    -- username and password should be correct
+    assert(test_username(username), "invalid username input")
+    assert(test_username(pass), "invalid password")
+    -- gen salt and hashed pass
+    local salt = zen.randombytes(16)
+    local hashed_pass = zen.argon2i(pass, salt, 5000, 10)
+    -- error if no users dir or if theres already a user profile
+    local userpath = "users/"..username
+    assert(love.filesystem.getInfo("users"), "user creation without users folder")
+    if love.filesystem.getInfo(userpath) then return false, "user already exists" end
+    
+    -- save data in database (filesystem)
+    local saveTable = {}
+    saveTable.passHash = hashed_pass
+    saveTable.salt = salt
+    local savedUserData = bitser.dumps(saveTable)
+    local status, err = love.filesystem.write(userpath.."/", savedUserData)
+    if not status then io.write(err..'\n') return false, "failed to write user object" end
+    return true
+end
+
 
 -- print(status, err)
 
