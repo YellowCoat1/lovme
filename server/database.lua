@@ -15,7 +15,7 @@ elseif not users_dir_info.type == "directory" then
 end
 
 local function test_username(username)
-    assert(type(username) == "string", "invalid username in test_username")
+    assert(type(username) == "string", "invalid type in test_username. type: " .. type(username))
     -- banned characters: spaces, [, ], (, ), :, ;, %
     if username:find("[%s%[%]%(%)%.%:%;%%]") then
         return false
@@ -26,10 +26,13 @@ end
 
 
 function database.createUserProfile(username, pass)
-
+    if not username then return false, "absent username" end
+    if not pass then return false, "absent password" end
+    
     -- username and password should be correct
-    if not test_username(username) then io.write(err..'\n') return false, "invalid username" end
-    if not test_username(pass) then io.write(err..'\n') return false, "invalid password" end
+    if not test_username(username) then return false, "invalid username" end
+    if not test_username(pass) then return false, "invalid password" end
+
     -- gen salt and hashed pass
     local salt = zen.randombytes(16)
     local hashed_pass = zen.argon2i(pass, salt, 5000, 10)
@@ -37,21 +40,39 @@ function database.createUserProfile(username, pass)
     local userpath = "users/"..username
     assert(love.filesystem.getInfo("users"), "user creation without users folder")
     if love.filesystem.getInfo(userpath) then return false, "user already exists" end
+
+    -- make user directory
+    local status = love.filesystem.createDirectory(userpath)
+    if status == false then return false, "failed to create user directory" end
     
     -- save data in database (filesystem)
     local saveTable = {}
     saveTable.passHash = hashed_pass
     saveTable.salt = salt
     local savedUserData = bitser.dumps(saveTable)
-    local status, err = love.filesystem.write(userpath.."/", savedUserData)
+    local status, err = love.filesystem.write(userpath.."/userdata", savedUserData)
     if not status then io.write(err..'\n') return false, "failed to write user object" end
     return true
+end
+
+local function recursiveRemove(path)
+    local pathInfo = love.filesystem.getInfo(path)
+    if not pathInfo then return false, "path does not exist" end
+    if pathInfo.type == "file" then
+        love.filesystem.remove(path)
+        return nil
+    end
+    local files = love.filesystem.getDirectoryItems(path)
+    for i,v in ipairs(files) do
+        recursiveRemove(path.."/"..v)
+    end
+    return love.filesystem.remove(path)
 end
 
 function database.removeUserProfile(username)
     local userpath = "users/"..username
     if not love.filesystem.getInfo(userpath) then return false, "user does not exist" end
-    local status = love.filesystem.remove(userpath)
+    local status = recursiveRemove(userpath)
     if status == false then return false, "failed to remove user" end
     return true
 end
