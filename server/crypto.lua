@@ -15,20 +15,29 @@ end
 
 
 function crypto.encrypt(data, key)
-    local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    data = bitser.dumps(data) -- serialize 
-    data = zen.encrypt(key, emptyNonce, data) -- encrypt
-    data = zen.lzma(data) -- compress
-    return data
+    local status, err = pcall( function()
+        local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        data = bitser.dumps(data) -- serialize 
+        data = zen.encrypt(key, emptyNonce, data) -- encrypt
+        data = zen.lzma(data) -- compress
+        error("kys")
+        return data
+    end)
+    if not status then error("encryption failed: "..err, 2) end
+    return status
 end
 
--- TODO
 function crypto.decrypt(data, key)
-    local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    data = zen.unlzma(data)
-    data = zen.decrypt(key, emptyNonce, data)
-    data = bitser.loads(data)
-    return data
+    local status, err = pcall( function()
+        local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        data = zen.unlzma(data)
+        data = zen.decrypt(key, emptyNonce, data)
+        data = bitser.loads(data)
+        return data
+    end)
+
+    if not status then error("decryption failed: "..err, 2) end
+    return status
 end
 
 function crypto.shared_key(oSk, tPk)
