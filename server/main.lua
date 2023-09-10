@@ -8,8 +8,9 @@ local bitser = require 'bitser' -- serialization
 local sock = require 'sock' -- networking
 local zen = require 'luazen' -- cryptography
 
--- crypto module
+-- server modules
 local crypto = require 'crypto'
+local database = require 'database'
 
 -- class user
 local user = require 'user'
@@ -60,7 +61,7 @@ end
 
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
-    -- LovmeServer:on("connect", function() end) -- empty connect function
+    LovmeServer:on("connect", function() end) -- empty connect function
     LovmeServer:on("connected", userConnect)
 end
 
