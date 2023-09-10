@@ -28,8 +28,8 @@ end
 function database.createUserProfile(username, pass)
 
     -- username and password should be correct
-    assert(test_username(username), "invalid username input")
-    assert(test_username(pass), "invalid password")
+    if not test_username(username) then io.write(err..'\n') return false, "invalid username" end
+    if not test_username(pass) then io.write(err..'\n') return false, "invalid password" end
     -- gen salt and hashed pass
     local salt = zen.randombytes(16)
     local hashed_pass = zen.argon2i(pass, salt, 5000, 10)
@@ -47,6 +47,7 @@ function database.createUserProfile(username, pass)
     if not status then io.write(err..'\n') return false, "failed to write user object" end
     return true
 end
+
 
 
 -- print(status, err)
