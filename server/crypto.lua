@@ -22,8 +22,7 @@ function crypto.encrypt(data, key)
         data = zen.lzma(data) -- compress
         return data
     end)
-    if status == false then error("encryption failed: " .. result, 2) end
-    return result
+    return status, result
 end
 
 function crypto.decrypt(data, key)
@@ -34,9 +33,7 @@ function crypto.decrypt(data, key)
         data = bitser.loads(data)
         return data
     end)
-
-    if status == false then error("decryption failed: "..result, 2) end
-    return result
+    return status, result
 end
 
 function crypto.shared_key(oSk, tPk)

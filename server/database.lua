@@ -10,7 +10,7 @@ love.filesystem.setIdentity("LOVME_server")
 local users_dir_info = love.filesystem.getInfo("users")
 if not users_dir_info then
     love.filesystem.createDirectory("users")
-elseif not users_dir_info.type == "directory" then
+elseif users_dir_info.type ~= "directory" then
     error("users file found; not directory.")
 end
 
@@ -91,18 +91,13 @@ end
 
 function database:checkPassEquality(username, pass)
     local status, userData = self.loadUserProfile(username)
+    if not love.filesystem.getInfo("users/"..username) then return false, "user does not exist" end
     if not userData or status == false then return false, "failed to load user profile: " .. userData end
     local salt = userData.salt
     local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
-    if hashed_pass == userData.passHash then
-        return true, true
-    else
-        return true, false
-    end
-
+    if hashed_pass == userData.passHash then return true, true
+    else return true, false end
 end
-
-
 
 -- print(status, err)
 

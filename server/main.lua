@@ -38,9 +38,20 @@ end
 
 local function user_message(data, client)
     local sessionID = data.SID
+    if not data.SID or not data.data then
+        client:send("malformed_req")
+        io.write("malformed_req\n")
+        return false, "malformed_req"
+    end
+    if ActiveUsers[sessionID] == nil then
+        client:send("unconnected")
+        return false, "client not found"
+    end
     local key = ActiveUsers[sessionID].sharedKey
     ActiveUsers[sessionID]:updateActive()
-    return crypto.decrypt(data.data, key)
+    local status, decryptedData = crypto.decrypt(data.data, key)
+    if status == true then return true, decryptedData, sessionID
+    else client:send("message_fail") end
 end
 
 local function emptyPong(data, client)
@@ -59,6 +70,12 @@ local function userConnect(data, client)
     client:send("key_response", returnTable)
 end
 
+local function userLogin(data, client)
+    local sessionID
+    data, sessionID = user_message(data, client)
+
+end
+
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
     LovmeServer:on("connect", function() end) -- empty connect function
@@ -67,7 +84,7 @@ end
 
 -- -- on load
 function love.load()
-    --* diagnostics
+    -- diagnostics
     local status, err = loadfile("diagnostics.lua")
     if status == nil then io.write(err..'\n') else status() end
 
@@ -96,7 +113,7 @@ function love.load()
             local sesh_id = test_client.test_id
             sendTable.SID = sesh_id
             sendTable.data = {}
-            sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
+            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
             test_client:send("pong", sendTable)
         end)
     end
