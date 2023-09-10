@@ -45,6 +45,8 @@ function database.createUserProfile(username, pass)
     -- make user directory
     local status = love.filesystem.createDirectory(userpath)
     if status == false then return false, "failed to create user directory" end
+    local status = love.filesystem.createDirectory(userpath.."/messages")
+    if status == false then return false, "failed to create messages directory" end
     
     -- save data in database (filesystem)
     local saveTable = {}
@@ -105,6 +107,8 @@ function database:checkPassEquality(username, pass)
     if hashed_pass == userData.passHash then return true, true
     else return true, false end
 end
+
+print(database.createUserProfile("eee", "aaa"))
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
