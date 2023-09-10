@@ -169,6 +169,7 @@ function love.update()
     test_client:update()
     LovmeServer:update()
 
+    -- updates active clients
     local time = love.timer.getTime()
     for id, activeUser in pairs(ActiveUsers) do
         ClientUpdate(id, activeUser, time)
