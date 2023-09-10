@@ -99,6 +99,5 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
--- print(status, err)
-
+-- location: ~/.local/share/love/LOVME_server
 return database
