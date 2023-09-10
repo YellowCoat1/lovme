@@ -69,7 +69,7 @@ end
 function love.load()
     --* diagnostics
     local status, err = loadfile("diagnostics.lua")
-    if status == nil then print(err) else status() end
+    if status == nil then io.write(err..'\n') else status() end
 
     loadServerCallbacks()
 
