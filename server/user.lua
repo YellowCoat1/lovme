@@ -1,11 +1,12 @@
 -- user object file
 local user = Object:extend()
 
-function user:new(sessionID, sharedKey)
+function user:new(sessionID, sharedKey, client)
+    self.client = client
     self.sessionID = sessionID
+    self.sharedKey = sharedKey
     self.lastActive = love.timer.getTime()
     self.waitingForPing = false
-    self.sharedKey = sharedKey
 end
 
 function user:updateActive()

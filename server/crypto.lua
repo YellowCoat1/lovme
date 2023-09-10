@@ -26,15 +26,13 @@ end
 function crypto.decrypt(data, key)
     local emptyNonce = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     data = zen.unlzma(data)
-    data = zen.decrpyt(key, emptyNonce, data)
+    data = zen.decrypt(key, emptyNonce, data)
     data = bitser.loads(data)
     return data
 end
 
 function crypto.shared_key(oSk, tPk)
-    -- print(self, tPk)
     return zen.key_exchange(oSk, tPk)
-    -- return 3
 end
 
 return crypto
