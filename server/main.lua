@@ -79,7 +79,7 @@ local function userLogin(data, client)
     if not status or not data then client:send("malformed_req") return false end
 
     local status, content = database:checkPassEquality(data.user, data.pass)
-    if status then
+    if status and content then
         ActiveUsers[sessionID].loggedInUsername = content
     else
         client:send("rejected_pass")
