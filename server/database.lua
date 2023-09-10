@@ -77,6 +77,18 @@ function database.removeUserProfile(username)
     return true
 end
 
+function database.loadUserProfile(username)
+    local userpath = "users/"..username
+    if not love.filesystem.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
+    local rawUserData = love.filesystem.read(userpath.."/userdata")
+    if not rawUserData then return false, "failed to read userdata" end
+
+    -- calls bitser.loads in a protected call
+    local status, result = pcall( function() return bitser.loads(rawUserData) end)
+    if status == false then result = "deserialization fail" end
+    return status, result
+end
+
 
 
 -- print(status, err)
