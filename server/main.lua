@@ -71,15 +71,25 @@ local function userConnect(data, client)
 end
 
 local function userLogin(data, client)
-    local sessionID
-    data, sessionID = user_message(data, client)
+    local sessionID, status
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then client:send("malformed_req") return false end
 
+    local status, content = database:checkPassEquality(data.user, data.pass)
+    if status then
+        ActiveUsers[sessionID].loggedInUsername = content
+    else
+        client:send("rejected_pass")
+        return false
+    end
+    return true
 end
 
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
     LovmeServer:on("connect", function() end) -- empty connect function
     LovmeServer:on("connected", userConnect)
+    LovmeServer:on("login", userLogin)
 end
 
 -- -- on load

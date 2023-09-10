@@ -7,6 +7,7 @@ function user:new(sessionID, sharedKey, client)
     self.sharedKey = sharedKey
     self.lastActive = love.timer.getTime()
     self.waitingForPing = false
+    self.loggedInUsername = nil
 end
 
 function user:updateActive()
