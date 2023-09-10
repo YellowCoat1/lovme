@@ -14,6 +14,7 @@ elseif users_dir_info.type ~= "directory" then
     error("users file found; not directory.")
 end
 
+-- test if a username has only valid characters
 local function test_username(username)
     assert(type(username) == "string", "invalid type in test_username. type: " .. type(username))
     -- banned characters: spaces, [, ], (, ), :, ;, %
@@ -24,7 +25,7 @@ local function test_username(username)
         
 end
 
-
+-- create a profile for a user in the database
 function database.createUserProfile(username, pass)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
@@ -55,6 +56,7 @@ function database.createUserProfile(username, pass)
     return true
 end
 
+-- same as rm -r 
 local function recursiveRemove(path)
     local pathInfo = love.filesystem.getInfo(path)
     if not pathInfo then return false, "path does not exist" end
@@ -69,6 +71,8 @@ local function recursiveRemove(path)
     return love.filesystem.remove(path)
 end
 
+
+-- removes a user profile from the database
 function database.removeUserProfile(username)
     local userpath = "users/"..username
     if not love.filesystem.getInfo(userpath) then return false, "user does not exist" end
@@ -77,6 +81,8 @@ function database.removeUserProfile(username)
     return true
 end
 
+
+-- returns the data associated with a user profile
 function database.loadUserProfile(username)
     local userpath = "users/"..username
     if not love.filesystem.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
@@ -89,6 +95,7 @@ function database.loadUserProfile(username)
     return status, result
 end
 
+-- checks if a password is correct for a user
 function database:checkPassEquality(username, pass)
     local status, userData = self.loadUserProfile(username)
     if not love.filesystem.getInfo("users/"..username) then return false, "user does not exist" end
@@ -99,5 +106,5 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
--- location: ~/.local/share/love/LOVME_server
+-- database location: ~/.local/share/love/LOVME_server
 return database

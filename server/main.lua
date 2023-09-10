@@ -25,7 +25,7 @@ LovmeServer = sock.newServer("localhost", SERVER_PORT)
 local test_client
 
 
--- generate a new session id
+-- generate a new random session id
 local function request_session_id()
     local new_session_id = zen.randombytes(8)
     for _, activeUser in ipairs(ActiveUsers) do
@@ -36,6 +36,7 @@ local function request_session_id()
     return new_session_id
 end
 
+-- processes a message from the user, decrypting and returning data (plus the session id)
 local function user_message(data, client)
     local sessionID = data.SID
     if not data.SID or not data.data then
@@ -58,6 +59,7 @@ local function emptyPong(data, client)
     user_message(data, client)
 end
 
+-- user connect, handles filing user key and user object creation
 local function userConnect(data, client)
     local ServerSecKey = zen.randombytes(32)
     local ServerPubKey = zen.x25519_public_key(ServerSecKey)
@@ -70,6 +72,7 @@ local function userConnect(data, client)
     client:send("key_response", returnTable)
 end
 
+-- user attempting to login with a username and password
 local function userLogin(data, client)
     local sessionID, status
     status, data, sessionID = user_message(data, client)
@@ -85,21 +88,25 @@ local function userLogin(data, client)
     return true
 end
 
+
+-- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
-    LovmeServer:on("connect", function() end) -- empty connect function
+    LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("connected", userConnect)
     LovmeServer:on("login", userLogin)
 end
 
 -- -- on load
 function love.load()
+
     -- diagnostics
     local status, err = loadfile("diagnostics.lua")
     if status == nil then io.write(err..'\n') else status() end
 
     loadServerCallbacks()
 
+    -- testing client connection
     do
         test_client = sock.newClient("localhost", SERVER_PORT)
         local test_csk = zen.randombytes(32)
