@@ -45,7 +45,7 @@ function database.createUserProfile(username, pass)
     -- make user directory
     local status = love.filesystem.createDirectory(userpath)
     if status == false then return false, "failed to create user directory" end
-    local status = love.filesystem.createDirectory(userpath.."/messages")
+    local status = love.filesystem.createDirectory(userpath.."/chats")
     if status == false then return false, "failed to create messages directory" end
     
     -- save data in database (filesystem)
@@ -106,6 +106,31 @@ function database:checkPassEquality(username, pass)
     local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
     if hashed_pass == userData.passHash then return true, true
     else return true, false end
+end
+
+function database.openUserChat(username1, username2)
+    local user1ChatsPath = "users/"..username1.."/chats"
+    local user2ChatsPath = "users/"..username2.."/chats"
+
+    -- error checking
+    if not love.filesystem.getInfo(user1ChatsPath) then return false, "can't find user 1 chat directory" end
+    if not love.filesystem.getInfo(user2ChatsPath) then return false, "can't find user 2 chat directory" end
+
+    -- create chat directories
+    local status
+    status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2)
+    if status == false then return false, "failed to create user1 chat directory" end
+    status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1)
+    if status == false then return false, "failed to create user2 chat directory" end
+
+    -- create chat message directories
+    status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2 .. "/messages")
+    if status == false then return false, "failed to create user1 messages directory" end
+    status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1 .. "/messages")
+    if status == false then return false, "failed to create user2 messages directory" end
+
+    return true
+
 end
 
 function database.addMessage(username, message)
