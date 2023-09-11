@@ -4,12 +4,13 @@ local bitser = require 'bitser' -- serialization
 local sock = require 'sock' -- networking
 local zen = require 'luazen' -- cryptography
 
-love.filesystem.setIdentity("LOVME_server")
+local fs = love.filesystem
+fs.setIdentity("LOVME_server")
 
 
-local users_dir_info = love.filesystem.getInfo("users")
+local users_dir_info = fs.getInfo("users")
 if not users_dir_info then
-    love.filesystem.createDirectory("users")
+    fs.createDirectory("users")
 elseif users_dir_info.type ~= "directory" then
     error("users file found; not directory.")
 end
@@ -43,13 +44,13 @@ function database.createUserProfile(username, pass)
     local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
     -- error if no users dir or if theres already a user profile
     local userpath = "users/"..username
-    assert(love.filesystem.getInfo("users"), "user creation without users folder")
-    if love.filesystem.getInfo(userpath) then return false, "user already exists" end
+    assert(fs.getInfo("users"), "user creation without users folder")
+    if fs.getInfo(userpath) then return false, "user already exists" end
 
     -- make user directory
-    local status = love.filesystem.createDirectory(userpath)
+    local status = fs.createDirectory(userpath)
     if status == false then return false, "failed to create user directory" end
-    local status = love.filesystem.createDirectory(userpath.."/chats")
+    local status = fs.createDirectory(userpath.."/chats")
     if status == false then return false, "failed to create messages directory" end
     
     -- save data in database (filesystem)
@@ -57,31 +58,31 @@ function database.createUserProfile(username, pass)
     saveTable.passHash = hashed_pass
     saveTable.salt = salt
     local savedUserData = bitser.dumps(saveTable)
-    local status, err = love.filesystem.write(userpath.."/userdata", savedUserData)
+    local status, err = fs.write(userpath.."/userdata", savedUserData)
     if not status then io.write(err..'\n') return false, "failed to write user object" end
     return true
 end
 
 -- same as rm -r 
 local function recursiveRemove(path)
-    local pathInfo = love.filesystem.getInfo(path)
+    local pathInfo = fs.getInfo(path)
     if not pathInfo then return false, "path does not exist" end
     if pathInfo.type == "file" then
-        love.filesystem.remove(path)
+        fs.remove(path)
         return nil
     end
-    local files = love.filesystem.getDirectoryItems(path)
+    local files = fs.getDirectoryItems(path)
     for i,v in ipairs(files) do
         recursiveRemove(path.."/"..v)
     end
-    return love.filesystem.remove(path)
+    return fs.remove(path)
 end
 
 
 -- removes a user profile from the database
 function database.removeUserProfile(username)
     local userpath = "users/"..username
-    if not love.filesystem.getInfo(userpath) then return false, "user does not exist" end
+    if not fs.getInfo(userpath) then return false, "user does not exist" end
     local status = recursiveRemove(userpath)
     if status == false then return false, "failed to remove user" end
     return true
@@ -91,8 +92,8 @@ end
 -- returns the data associated with a user profile
 function database.loadUserProfile(username)
     local userpath = "users/"..username
-    if not love.filesystem.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
-    local rawUserData = love.filesystem.read(userpath.."/userdata")
+    if not fs.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
+    local rawUserData = fs.read(userpath.."/userdata")
     if not rawUserData then return false, "failed to read userdata" end
 
     -- calls bitser.loads in a protected call
@@ -104,7 +105,7 @@ end
 -- checks if a password is correct for a user
 function database:checkPassEquality(username, pass)
     local status, userData = self.loadUserProfile(username)
-    if not love.filesystem.getInfo("users/"..username) then return false, "user does not exist" end
+    if not fs.getInfo("users/"..username) then return false, "user does not exist" end
     if not userData or status == false then return false, "failed to load user profile: " .. userData end
     local salt = userData.salt
     local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
@@ -117,20 +118,20 @@ function database.openUserChat(username1, username2, bypass)
     local user2ChatsPath = "users/"..username2.."/chats"
 
     -- error checking
-    if not love.filesystem.getInfo(user1ChatsPath) then return false, "can't find user 1 chat directory" end
-    if not love.filesystem.getInfo(user2ChatsPath) then return false, "can't find user 2 chat directory" end
+    if not fs.getInfo(user1ChatsPath) then return false, "can't find user 1 chat directory" end
+    if not fs.getInfo(user2ChatsPath) then return false, "can't find user 2 chat directory" end
 
     -- create chat directories
     local status
-    status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2)
+    status = fs.createDirectory(user1ChatsPath.."/" .. username2)
     if status == false and not bypass then return false, "failed to create user1 chat directory" end
-    status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1)
+    status = fs.createDirectory(user2ChatsPath.."/" .. username1)
     if status == false and not bypass then return false, "failed to create user2 chat directory" end
 
     -- create chat message directories
-    status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2 .. "/messages")
+    status = fs.createDirectory(user1ChatsPath.."/" .. username2 .. "/messages")
     if status == false and not bypass then return false, "failed to create user1 messages directory" end
-    status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1 .. "/messages")
+    status = fs.createDirectory(user2ChatsPath.."/" .. username1 .. "/messages")
     if status == false and not bypass then return false, "failed to create user2 messages directory" end
 
     return true
@@ -145,34 +146,34 @@ function database:addStringMessage(sender, reciever, message)
     -- type: string     type of the message (text|image)
     -- data: any        the message itself     
 
-    if not love.filesystem.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+    if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
 
     local messageID = math.floor((self.epochOffset + love.timer.getTime())*100)
     local messagePath = senderMessagePath.."/"..messageID
 
     -- error checking
     if type(message) ~= "string" then return false, "messsage is not a string" end
-    if love.filesystem.getInfo(messagePath) then return false, "message with id already exists" end
-    local status = love.filesystem.createDirectory(messagePath)
+    if fs.getInfo(messagePath) then return false, "message with id already exists" end
+    local status = fs.createDirectory(messagePath)
     if not status then return false, "failed to create message directory" end
 
     local messageData = {}
     messageData.type = "text"
     messageData.data = message
     local serializedMessageData = bitser.dumps(messageData)
-    status = love.filesystem.write(messagePath.."/messageData", serializedMessageData)
+    status = fs.write(messagePath.."/messageData", serializedMessageData)
     if not status then return false, "failed to write message data" end
     return true
 end
 
 local function getLastMessage(username, username2)
     local messagePath = "users/"..username.."/chats/"..username2.."/messages"
-    local messages = love.filesystem.getDirectoryItems(messagePath)
+    local messages = fs.getDirectoryItems(messagePath)
     local messagesTemp = {}
     for i,v in pairs(messages) do table.insert(messagesTemp, tonumber(v)) end
     table.sort(messagesTemp)
     local messageID = messagesTemp[1]
-    local serializedMessage, err = love.filesystem.read(messagePath.."/"..messageID.."/".."messageData")
+    local serializedMessage, err = fs.read(messagePath.."/"..messageID.."/".."messageData")
 
     local rawMessage = bitser.loads(serializedMessage)
     if not rawMessage then return end
