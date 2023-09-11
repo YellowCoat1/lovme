@@ -139,7 +139,7 @@ end
 
 function database:addStringMessage(sender, reciever, message)
     self.openUserChat(sender, reciever, true)
-    local senderMessagePath = "users/"..sender.."/chats/"..reciever.."messages"
+    local senderMessagePath = "users/"..sender.."/chats/"..reciever.."/messages"
 
     -- message is a table with the format
     -- type: string     type of the message (text|image)
@@ -147,7 +147,7 @@ function database:addStringMessage(sender, reciever, message)
 
     if not love.filesystem.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
 
-    local messageID = math.floor((self.epochOffset + love.timer.getTime())*10)
+    local messageID = math.floor((self.epochOffset + love.timer.getTime())*100)
     local messagePath = senderMessagePath.."/"..messageID
 
     -- error checking
@@ -164,6 +164,7 @@ function database:addStringMessage(sender, reciever, message)
     if not status then return false, "failed to write message data" end
     return true
 end
+
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
