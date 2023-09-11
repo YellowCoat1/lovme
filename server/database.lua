@@ -102,6 +102,12 @@ function database.loadUserProfile(username)
     return status, result
 end
 
+-- checks if a user exists in the database
+function database:doesUserExist(username)
+    if fs.getInfo("/users/"..username) then return true
+    else return false end
+end
+
 -- checks if a password is correct for a user
 function database:checkPassEquality(username, pass)
     local status, userData = self.loadUserProfile(username)
