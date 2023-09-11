@@ -14,6 +14,10 @@ elseif users_dir_info.type ~= "directory" then
     error("users file found; not directory.")
 end
 
+
+database.epochOffset = os.time() - math.floor(love.timer.getTime())
+
+
 -- test if a username has only valid characters
 local function test_username(username)
     assert(type(username) == "string", "invalid type in test_username. type: " .. type(username))
@@ -108,7 +112,7 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
-function database.openUserChat(username1, username2)
+function database.openUserChat(username1, username2, bypass)
     local user1ChatsPath = "users/"..username1.."/chats"
     local user2ChatsPath = "users/"..username2.."/chats"
 
@@ -119,25 +123,46 @@ function database.openUserChat(username1, username2)
     -- create chat directories
     local status
     status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2)
-    if status == false then return false, "failed to create user1 chat directory" end
+    if status == false and not bypass then return false, "failed to create user1 chat directory" end
     status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1)
-    if status == false then return false, "failed to create user2 chat directory" end
+    if status == false and not bypass then return false, "failed to create user2 chat directory" end
 
     -- create chat message directories
     status = love.filesystem.createDirectory(user1ChatsPath.."/" .. username2 .. "/messages")
-    if status == false then return false, "failed to create user1 messages directory" end
+    if status == false and not bypass then return false, "failed to create user1 messages directory" end
     status = love.filesystem.createDirectory(user2ChatsPath.."/" .. username1 .. "/messages")
-    if status == false then return false, "failed to create user2 messages directory" end
+    if status == false and not bypass then return false, "failed to create user2 messages directory" end
 
     return true
 
 end
 
-function database.addMessage(username, message)
+function database:addStringMessage(sender, reciever, message)
+    self.openUserChat(sender, reciever, true)
+    local senderMessagePath = "users/"..sender.."/chats/"..reciever.."messages"
+
     -- message is a table with the format
     -- type: string     type of the message (text|image)
     -- data: any        the message itself     
 
+    if not love.filesystem.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+
+    local messageID = math.floor((self.epochOffset + love.timer.getTime())*10)
+    local messagePath = senderMessagePath.."/"..messageID
+
+    -- error checking
+    if type(message) ~= "string" then return false, "messsage is not a string" end
+    if love.filesystem.getInfo(messagePath) then return false, "message with id already exists" end
+    local status = love.filesystem.createDirectory(messagePath)
+    if not status then return false, "failed to create message directory" end
+
+    local messageData = {}
+    messageData.type = "text"
+    messageData.data = message
+    local serializedMessageData = bitser.dumps(messageData)
+    status = love.filesystem.write(messagePath.."/messageData", serializedMessageData)
+    if not status then return false, "failed to write message data" end
+    return true
 end
 
 -- database location: ~/.local/share/love/LOVME_server
