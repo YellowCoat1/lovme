@@ -98,6 +98,8 @@ local function userLogin(data, client)
         return false
     end
 
+    client:send("login-success")
+
     return true
 end
 
