@@ -165,6 +165,19 @@ function database:addStringMessage(sender, reciever, message)
     return true
 end
 
+local function getLastMessage(username, username2)
+    local messagePath = "users/"..username.."/chats/"..username2.."/messages"
+    local messages = love.filesystem.getDirectoryItems(messagePath)
+    local messagesTemp = {}
+    for i,v in pairs(messages) do table.insert(messagesTemp, tonumber(v)) end
+    table.sort(messagesTemp)
+    local messageID = messagesTemp[1]
+    local serializedMessage, err = love.filesystem.read(messagePath.."/"..messageID.."/".."messageData")
+
+    local rawMessage = bitser.loads(serializedMessage)
+    if not rawMessage then return end
+    return(rawMessage.data)
+end
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
