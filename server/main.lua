@@ -83,16 +83,16 @@ end
 
 -- user attempting to login with a username and password
 local function userLogin(data, client)
-    local sessionID, status, result
+    local sessionID, status
     status, data, sessionID = user_message(data, client)
     if not status or not data then
         return false
     end
     local activeUser = ActiveUsers[sessionID]
 
-    local status, content = database:checkPassEquality(data.user, data.pass)
-    if status and content then
-        activeUser.loggedInUsername = content
+    status = database:checkPassEquality(data.user, data.pass)
+    if status then
+        activeUser.loggedInUsername = data.user
     else
         userSendError(client, activeUser, "rejected_pass")
         return false
