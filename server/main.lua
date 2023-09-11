@@ -83,7 +83,7 @@ end
 
 -- user attempting to login with a username and password
 local function userLogin(data, client)
-    local sessionID, status, result, client_err
+    local sessionID, status, result
     status, data, sessionID = user_message(data, client)
     if not status or not data then
         return false
@@ -101,7 +101,28 @@ local function userLogin(data, client)
     return true
 end
 
+local function message_send(data, client)
+    local sessionID, status, result
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then return false end
+    local activeUser = ActiveUsers[sessionID]
+    local username = activeUser.loggedInUsername
 
+    if username == nil then
+        userSendError(client, activeUser, "not_logged_in")
+        return
+    elseif not database.doesUserExist(username) then
+        userSendError(client, activeUser, "credentials_invalid")
+        return
+    end
+
+    local status, err = database:addStringMessage(username, data.reciever, data.message)
+    if not status then
+        userSendError(client, activeUser, "message_send_fail")
+        return
+    end
+
+end
 
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()

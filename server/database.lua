@@ -172,6 +172,7 @@ function database:addStringMessage(sender, reciever, message)
     return true
 end
 
+-- only used as a testing function, quick n' dirty approach
 local function getLastMessage(username, username2)
     local messagePath = "users/"..username.."/chats/"..username2.."/messages"
     local messages = fs.getDirectoryItems(messagePath)
