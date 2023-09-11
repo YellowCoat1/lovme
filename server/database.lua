@@ -103,7 +103,7 @@ function database.loadUserProfile(username)
 end
 
 -- checks if a user exists in the database
-function database:doesUserExist(username)
+function database.doesUserExist(username)
     if fs.getInfo("/users/"..username) then return true
     else return false end
 end
