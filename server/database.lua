@@ -108,5 +108,12 @@ function database:checkPassEquality(username, pass)
     else return true, false end
 end
 
+function database.addMessage(username, message)
+    -- message is a table with the format
+    -- type: string     type of the message (text|image)
+    -- data: any        the message itself     
+
+end
+
 -- database location: ~/.local/share/love/LOVME_server
 return database
