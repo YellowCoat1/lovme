@@ -36,23 +36,32 @@ local function request_session_id()
     return new_session_id
 end
 
+
+
 -- processes a message from the user, decrypting and returning data (plus the session id)
 local function user_message(data, client)
     local sessionID = data.SID
     if not data.SID or not data.data then
-        client:send("malformed_req")
-        io.write("malformed_req\n")
+        client:send("usr_error_de", "malformed_req")
         return false, "malformed_req"
     end
     if ActiveUsers[sessionID] == nil then
-        client:send("unconnected")
+        client:send("usr_error_de", "unconnected")
         return false, "client not found"
     end
     local key = ActiveUsers[sessionID].sharedKey
     ActiveUsers[sessionID]:updateActive()
     local status, decryptedData = crypto.decrypt(data.data, key)
     if status == true then return true, decryptedData, sessionID
-    else client:send("message_fail") end
+    else client:send("usr_error_de", "malformed_req") end
+end
+
+local function userSendError(client, activeUser, message)
+    if not client or not activeUser or type(message) ~= "string" then return false end
+    local status, result = crypto.encrypt({message}, activeUser.sharedKey)
+    if status then client:send("usr_error", result)
+    else client:send("usr_error_de", message) end
+    return true
 end
 
 local function emptyPong(data, client)
@@ -74,19 +83,24 @@ end
 
 -- user attempting to login with a username and password
 local function userLogin(data, client)
-    local sessionID, status
+    local sessionID, status, result, client_err
     status, data, sessionID = user_message(data, client)
-    if not status or not data then client:send("malformed_req") return false end
+    if not status or not data then
+        return false
+    end
+    local activeUser = ActiveUsers[sessionID]
 
     local status, content = database:checkPassEquality(data.user, data.pass)
     if status and content then
-        ActiveUsers[sessionID].loggedInUsername = content
+        activeUser.loggedInUsername = content
     else
-        client:send("rejected_pass")
+        userSendError(client, activeUser, "rejected_pass")
         return false
     end
+
     return true
 end
+
 
 
 -- connect user functions to sock.lua callbacks
@@ -95,6 +109,7 @@ local function loadServerCallbacks()
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("connected", userConnect)
     LovmeServer:on("login", userLogin)
+    LovmeServer:on("message_send", message_send)
 end
 
 -- -- on load
@@ -141,6 +156,10 @@ function love.load()
             sendTable.data = {}
             _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
             test_client:send("pong", sendTable)
+        end)
+        test_client:on("usr_error", function(data)
+            status, data = crypto.decrypt(data, test_client.shared_key)
+            print(data[1])
         end)
     end
 end
