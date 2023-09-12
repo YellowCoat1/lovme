@@ -41,7 +41,7 @@ function database.createUserProfile(username, pass)
 
     -- gen salt and hashed pass
     local salt = zen.randombytes(16)
-    local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
+    local hashed_pass = zen.argon2i(pass, salt, 500, 10)
     -- error if no users dir or if theres already a user profile
     local userpath = "users/"..username
     assert(fs.getInfo("users"), "user creation without users folder")
@@ -57,6 +57,10 @@ function database.createUserProfile(username, pass)
     local saveTable = {}
     saveTable.passHash = hashed_pass
     saveTable.salt = salt
+    local bytes16Salt = zen.b64decode("HELLOTHEREITSVIBINHERE")
+    local databasePrivateKey = zen.argon2i(pass, bytes16Salt, 200, 15)
+    saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
+
     local savedUserData = bitser.dumps(saveTable)
     local status, err = fs.write(userpath.."/userdata", savedUserData)
     if not status then io.write(err..'\n') return false, "failed to write user object" end
