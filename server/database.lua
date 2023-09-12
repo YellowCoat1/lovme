@@ -114,7 +114,7 @@ function database:checkPassEquality(username, pass)
     if not fs.getInfo("users/"..username) then return false, "user does not exist" end
     if not userData or status == false then return false, "failed to load user profile: " .. userData end
     local salt = userData.salt
-    local hashed_pass = zen.argon2i(pass, salt, 1000, 10)
+    local hashed_pass = zen.argon2i(pass, salt, 10000, 10)
     if hashed_pass == userData.passHash then return true, true
     else return true, false end
 end
@@ -169,7 +169,7 @@ function database:addStringMessage(sender, reciever, message)
     local serializedMessageData = bitser.dumps(messageData)
     status = fs.write(messagePath.."/messageData", serializedMessageData)
     if not status then return false, "failed to write message data" end
-    return true
+    return true, tostring(messageID)
 end
 
 -- only used as a testing function, quick n' dirty approach
