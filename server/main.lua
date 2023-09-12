@@ -172,6 +172,11 @@ function love.load()
             sendTable.data = {}
             sendTable.data.user = "user1"
             sendTable.data.pass = "password"
+
+            local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
+            test_client.database_secret = zen.argon2i(sendTable.data.pass, bytes16Salt, 200, 15)
+            test_client.database_public = zen.x25519_public_key(test_client.database_secret)
+            
             _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
             test_client:send("login", sendTable)
         end)

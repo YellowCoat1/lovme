@@ -60,7 +60,7 @@ function database.createUserProfile(username, pass)
 
     -- database public key for the user
     -- used for decrpyting conversations
-    local bytes16Salt = zen.b64decode("HELLOTHEREITSVIBINHERE")
+    local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
     local databasePrivateKey = zen.argon2i(pass, bytes16Salt, 200, 15)
     saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
 
