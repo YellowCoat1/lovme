@@ -36,8 +36,6 @@ local function request_session_id()
     return new_session_id
 end
 
-
-
 -- processes a message from the user, decrypting and returning data (plus the session id)
 local function user_message(data, client)
     local sessionID = data.SID
@@ -138,6 +136,7 @@ local function database_public_key_request(data, client)
 
     local status, result = database.getPublicKey(data.requestedUsername)
     if not status then
+        userSendError(client, activeUser, "key_req_fail")
         return false
     end
     
@@ -208,7 +207,7 @@ function love.load()
             test_client:send("database_public_key_req", sendTable)
         end)
 
-        test_client("key_req_response", function(data)
+        test_client:on("key_req_response", function(data)
             database_public_keys["user2"] = data.returnKey
         end)
 
