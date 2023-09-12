@@ -118,11 +118,15 @@ local function message_send(data, client)
         return
     end
 
-    local status, err = database:addStringMessage(username, data.reciever, data.message)
+    local status, messageID = database:addStringMessage(username, data.reciever, data.message)
     if not status then
         userSendError(client, activeUser, "message_send_fail")
         return
     end
+
+    local sendTable = {}
+    sendTable.messageID = messageID
+    client:send("message_send_success", sendTable)
 
 end
 
