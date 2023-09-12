@@ -109,6 +109,24 @@ function database.loadUserProfile(username)
     return status, result
 end
 
+function database.getPublicKey(username)
+    local userpath = "users/"..username
+    if not fs.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
+    local rawUserData = fs.read(userpath.."/userdata")
+    if not rawUserData then return false, "failed to read userdata" end
+
+    local status, result = pcall( function() return bitser.loads(rawUserData) end)
+    if status == false or not result then
+        return false, "deserialization fail"
+    end
+    local pubKey = result.DatabasePublicKey
+    if not pubKey then
+        return false, "no public database key found"
+    end
+
+    return true, pubKey
+end
+
 -- checks if a user exists in the database
 function database.doesUserExist(username)
     if fs.getInfo("/users/"..username) then return true

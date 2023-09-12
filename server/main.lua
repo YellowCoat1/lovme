@@ -130,6 +130,22 @@ local function message_send(data, client)
 
 end
 
+local function database_public_key_request(data, client)
+    local sessionID, status, result
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then return false end
+    local activeUser = ActiveUsers[sessionID]
+
+    local status, result = database.getPublicKey(data.requestedUsername)
+    if not status then
+        return false
+    end
+    
+    local sendTable = {}
+    sendTable.returnKey = result
+    client:send("key_req_response", sendTable)
+end
+
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
     LovmeServer:on("pong", emptyPong)
@@ -137,6 +153,7 @@ local function loadServerCallbacks()
     LovmeServer:on("connected", userConnect)
     LovmeServer:on("login", userLogin)
     LovmeServer:on("message_send", message_send)
+    LovmeServer:on("database_public_key_req", database_public_key_request)
 end
 
 -- -- on load
@@ -153,6 +170,7 @@ function love.load()
         test_client = sock.newClient("localhost", SERVER_PORT)
         local test_csk = zen.randombytes(32)
         local test_cpk = zen.x25519_public_key(test_csk)
+        local database_public_keys = {}
         test_client:connect()
 
 
@@ -176,10 +194,24 @@ function love.load()
             local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
             test_client.database_secret = zen.argon2i(sendTable.data.pass, bytes16Salt, 200, 15)
             test_client.database_public = zen.x25519_public_key(test_client.database_secret)
-            
+
             _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
             test_client:send("login", sendTable)
         end)
+
+        test_client:on("login-success", function(data)
+            local sendTable = {}
+            sendTable.SID = test_client.test_id
+            sendTable.data = {}
+            sendTable.data.requestedUsername = "user2"
+            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
+            test_client:send("database_public_key_req", sendTable)
+        end)
+
+        test_client("key_req_response", function(data)
+            database_public_keys["user2"] = data.returnKey
+        end)
+
 
         test_client:on("ping", function()
             local sendTable = {}
