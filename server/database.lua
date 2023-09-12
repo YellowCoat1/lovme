@@ -57,6 +57,9 @@ function database.createUserProfile(username, pass)
     local saveTable = {}
     saveTable.passHash = hashed_pass
     saveTable.salt = salt
+
+    -- database public key for the user
+    -- used for decrpyting conversations
     local bytes16Salt = zen.b64decode("HELLOTHEREITSVIBINHERE")
     local databasePrivateKey = zen.argon2i(pass, bytes16Salt, 200, 15)
     saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
