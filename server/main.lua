@@ -82,17 +82,20 @@ end
 
 -- user attempting to login with a username and password
 local function userLogin(data, client)
-    local sessionID, status
+    local sessionID, status, result
     status, data, sessionID = user_message(data, client)
     if not status or not data then
         return false
     end
     local activeUser = ActiveUsers[sessionID]
 
-    status = database:checkPassEquality(data.user, data.pass)
-    if status then
+    print("PASS: ", data.user, data.pass)
+    status, result = database:checkPassEquality(data.user, data.pass)
+    if status and result then
+        print("accepted")
         activeUser.loggedInUsername = data.user
     else
+        print("rejected")
         userSendError(client, activeUser, "rejected_pass")
         return false
     end
@@ -136,7 +139,7 @@ local function database_public_key_request(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    local status, result = database.getPublicKey(data.requestedUsername)
+    status, result = database.getPublicKey(data.requestedUsername)
     if not status then
         userSendError(client, activeUser, "key_req_fail")
         return false
