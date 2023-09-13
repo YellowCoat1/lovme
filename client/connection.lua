@@ -15,14 +15,18 @@ sock_client:connect()
 
 
 local function sendToServer(message, sendData)
-    if not sock_client then print("sock_client not found") return false end
+    if not sock_client then print("sock_client not found\n") return false end
+    if not sock_client.shared_key then print("shared key not found") return false end
     local sesh_id = sock_client.test_id
     if not sesh_id then print("SID not found") return false end
     local sendTable = {}
     sendTable.SID = sesh_id
     sendTable.data = {}
-    _, sendTable.data = crypto.encrypt(sendData, sock_client.shared_key)
-    sock_client:send(message, sendData)
+    local status
+    status, sendTable.data = crypto.encrypt(sendData, sock_client.shared_key)
+    if not status then return false end
+    sock_client:send(message, sendTable)
+    return true
 end
 
 
@@ -37,15 +41,17 @@ sock_client:on("key_response", function(data)
     sock_client.test_id = data.sessionID
     sock_client.shared_key = zen.key_exchange(client_secret_key, data.spk)
 
-    -- gen database keys
-    local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
-    sock_client.database_secret = zen.argon2i(sendTable.data.pass, bytes16Salt, 200, 15)
-    sock_client.database_public = zen.x25519_public_key(sock_client.database_secret)
 
-    -- login
     local sendTable = {}
     sendTable.user = "user1"
     sendTable.pass = "password"
+
+    -- gen database keys
+    local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
+    sock_client.database_secret = zen.argon2i(sendTable.pass, bytes16Salt, 200, 15)
+    sock_client.database_public = zen.x25519_public_key(sock_client.database_secret)
+
+    -- login
 
 
     local status = sendToServer("login", sendTable)
@@ -80,8 +86,12 @@ end)
 -- for debugging
 sock_client:on("usr_error", function(data)
     local status, result = crypto.decrypt(data, sock_client.shared_key)
-    if not result then return end
-    print(result[1])
+    if not status or not result then return end
+    print("usr_error: ".. result[1])
+end)
+
+sock_client:on("usr_error_de", function(data)
+    print("usr_error_de: " .. data)
 end)
 
 function connection.update()
