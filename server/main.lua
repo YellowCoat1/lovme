@@ -73,10 +73,10 @@ local function userConnect(data, client)
     local shared = crypto.shared_key(ServerSecKey, data.upk)
     local sessionID = request_session_id()
     ActiveUsers[sessionID] = user(sessionID, shared, client)
-    local returnTable = {}
-    returnTable.spk = ServerPubKey
-    returnTable.sessionID = sessionID
-    client:send("key_response", returnTable)
+    local sendTable = {}
+    sendTable.spk = ServerPubKey
+    sendTable.sessionID = sessionID
+    client:send("key_response", sendTable)
 end
 
 -- user attempting to login with a username and password
@@ -124,7 +124,8 @@ local function message_send(data, client)
 
     local sendTable = {}
     sendTable.messageID = messageID
-    client:send("message_send_success", sendTable)
+    local encryptedSendTable = crypto.encrypt(sendTable)
+    client:send("message_send_success", encryptedSendTable)
 
 end
 
@@ -142,7 +143,8 @@ local function database_public_key_request(data, client)
     
     local sendTable = {}
     sendTable.returnKey = result
-    client:send("key_req_response", sendTable)
+    local encryptedSendTable = crypto.encrypt(sendTable)
+    client:send("key_req_response", encryptedSendTable)
 end
 
 -- connect user functions to sock.lua callbacks
@@ -187,6 +189,7 @@ function ClientUpdate(id, activeUser, time)
     end
 end
 
+---@diagnostic disable-next-line: duplicate-set-field
 function love.update()
     -- update server
     LovmeServer:update()

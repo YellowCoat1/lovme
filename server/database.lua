@@ -212,5 +212,7 @@ local function getLastMessage(username, username2)
     return(rawMessage.data)
 end
 
+database.createUserProfile("user2", "password")
+
 -- database location: ~/.local/share/love/LOVME_server
 return database

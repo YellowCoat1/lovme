@@ -14,7 +14,6 @@ local database_public_keys = {}
 sock_client:connect()
 
 
-
 sock_client:on("connect", function()
     local sendTable = {}
     sendTable.upk = client_public_key
@@ -22,6 +21,7 @@ sock_client:on("connect", function()
 end)
 
 sock_client:on("key_response", function(data)
+
     sock_client.test_id = data.sessionID
     sock_client.shared_key = zen.key_exchange(client_secret_key, data.spk)
 
@@ -41,6 +41,7 @@ sock_client:on("key_response", function(data)
 end)
 
 sock_client:on("login-success", function(data)
+    data = crypto.decrypt(data)
     local sendTable = {}
     sendTable.SID = sock_client.test_id
     sendTable.data = {}
@@ -50,6 +51,7 @@ sock_client:on("login-success", function(data)
 end)
 
 sock_client:on("key_req_response", function(data)
+    local status, data = crypto.decrypt(data, sock_client.shared_key)
     database_public_keys["user2"] = data.returnKey
 end)
 
