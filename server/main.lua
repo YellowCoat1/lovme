@@ -165,66 +165,7 @@ function love.load()
     loadServerCallbacks()
 
     -- testing client connection
-    do
-        test_client = sock.newClient("localhost", SERVER_PORT)
-        local test_csk = zen.randombytes(32)
-        local test_cpk = zen.x25519_public_key(test_csk)
-        local database_public_keys = {}
-        test_client:connect()
-
-
-        test_client:on("connect", function()
-            local sendTable = {}
-            sendTable.upk = test_cpk
-            test_client:send("connected", sendTable)
-        end)
-
-        test_client:on("key_response", function(data)
-            test_client.test_id = data.sessionID
-            test_client.shared_key = zen.key_exchange(test_csk, data.spk)
-
-            -- login
-            local sendTable = {}
-            sendTable.SID = test_client.test_id
-            sendTable.data = {}
-            sendTable.data.user = "user1"
-            sendTable.data.pass = "password"
-
-            local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
-            test_client.database_secret = zen.argon2i(sendTable.data.pass, bytes16Salt, 200, 15)
-            test_client.database_public = zen.x25519_public_key(test_client.database_secret)
-
-            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
-            test_client:send("login", sendTable)
-        end)
-
-        test_client:on("login-success", function(data)
-            local sendTable = {}
-            sendTable.SID = test_client.test_id
-            sendTable.data = {}
-            sendTable.data.requestedUsername = "user2"
-            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
-            test_client:send("database_public_key_req", sendTable)
-        end)
-
-        test_client:on("key_req_response", function(data)
-            database_public_keys["user2"] = data.returnKey
-        end)
-
-
-        test_client:on("ping", function()
-            local sendTable = {}
-            local sesh_id = test_client.test_id
-            sendTable.SID = sesh_id
-            sendTable.data = {}
-            _, sendTable.data = crypto.encrypt(sendTable.data, test_client.shared_key)
-            test_client:send("pong", sendTable)
-        end)
-        test_client:on("usr_error", function(data)
-            status, data = crypto.decrypt(data, test_client.shared_key)
-            print(data[1])
-        end)
-    end
+    
 end
 
 function ClientUpdate(id, activeUser, time)
@@ -248,7 +189,6 @@ end
 
 function love.update()
     -- update server
-    test_client:update()
     LovmeServer:update()
 
     -- updates active clients
