@@ -13,6 +13,8 @@ local client_public_key = zen.x25519_public_key(client_secret_key)
 local database_public_keys = {}
 sock_client:connect()
 
+local USERNAME = ARGS[1]
+local PASSWORD = ARGS[2]
 
 local function sendToServer(message, sendData)
     if not sock_client then print("sock_client not found\n") return false end
@@ -43,8 +45,8 @@ sock_client:on("key_response", function(data)
 
 
     local sendTable = {}
-    sendTable.user = "user1"
-    sendTable.pass = "password"
+    sendTable.user = USERNAME
+    sendTable.pass = PASSWORD
 
     -- gen database keys
     local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
