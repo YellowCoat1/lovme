@@ -31,7 +31,7 @@ local function test_username(username)
 end
 
 -- create a profile for a user in the database
-function database.createUserProfile(username, pass)
+function database.createUserProfile(username, pass, database_salt)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
     
@@ -60,7 +60,10 @@ function database.createUserProfile(username, pass)
 
     -- database public key for the user
     -- used for decrpyting conversations
-    local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
+    if not database_salt then return false, "database_salt not found" end
+    if type(database_salt) ~= "string" then return false, "database_salt not a string" end
+    if #database_salt ~= 16 then return false, "database_salt invalid size" end
+    local bytes16Salt = database_salt
     local databasePrivateKey = zen.argon2i(pass, bytes16Salt, 200, 15)
     saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
 
@@ -212,7 +215,8 @@ local function getLastMessage(username, username2)
     return(rawMessage.data)
 end
 
-database.createUserProfile("user2", "password")
+database.createUserProfile("user1", "password", zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA"))
+database.createUserProfile("user2", "password1", zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA"))
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
