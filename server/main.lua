@@ -1,3 +1,4 @@
+---@diagnostic disable: duplicate-set-field
 -- configure library paths
 local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
@@ -158,7 +159,7 @@ local function loadServerCallbacks()
 end
 
 -- -- on load
-function love.load()
+function love.load(arg)
 
     -- diagnostics
     local status, err = loadfile("diagnostics.lua")
@@ -189,7 +190,6 @@ function ClientUpdate(id, activeUser, time)
     end
 end
 
----@diagnostic disable-next-line: duplicate-set-field
 function love.update()
     -- update server
     LovmeServer:update()

@@ -1,13 +1,19 @@
+---@diagnostic disable: duplicate-set-field
 -- configure library paths
 local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
-local connection = require 'connection'
+local connection
 
 
+function love.load(args)
+    ARGS = args
+    if not ARGS[1] then ARGS[1] = "user1" end
+    if not ARGS[2] then ARGS[2] = "password" end
+    connection = require 'connection'
+end
 
----@diagnostic disable-next-line: duplicate-set-field
 function love.update()
     connection.update()
 end
