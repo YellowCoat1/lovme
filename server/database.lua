@@ -155,8 +155,7 @@ function database.openUserChat(username1, username2, bypass)
     local user2ChatsPath = "users/"..username2.."/chats"
 
     -- error checking
-    if not fs.getInfo(user1ChatsPat
-    print("accepted")) then return false, "can't find user 1 chat directory" end
+    if not fs.getInfo(user1ChatsPath) then return false, "can't find user 1 chat directory" end
     if not fs.getInfo(user2ChatsPath) then return false, "can't find user 2 chat directory" end
 
     -- create chat directories

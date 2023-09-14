@@ -75,6 +75,7 @@ end)
 
 sock_client:on("key_req_response", function(data)
     local status, data = crypto.decrypt(data, sock_client.shared_key)
+    if not data then return end
     database_public_keys["user2"] = data.returnKey
 end)
 
