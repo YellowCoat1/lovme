@@ -16,6 +16,9 @@ sock_client:connect()
 local USERNAME = ARGS[1]
 local PASSWORD = ARGS[2]
 
+local ARGON_KB = 5000
+local ARGON_I = 15
+
 local function sendToServer(message, sendData)
     if not sock_client then print("sock_client not found\n") return false end
     if not sock_client.shared_key then print("shared key not found") return false end
@@ -50,7 +53,7 @@ sock_client:on("key_response", function(data)
 
     -- gen database keys
     local bytes16Salt = zen.b64decode("ABCDEFGHIJKLMNOPQRSTUV")
-    sock_client.database_secret = zen.argon2i(sendTable.pass, bytes16Salt, 200, 15)
+    sock_client.database_secret = zen.argon2i(sendTable.pass, bytes16Salt, ARGON_KB, ARGON_I)
     sock_client.database_public = zen.x25519_public_key(sock_client.database_secret)
 
     -- login

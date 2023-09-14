@@ -89,13 +89,10 @@ local function userLogin(data, client)
     end
     local activeUser = ActiveUsers[sessionID]
 
-    print("PASS: ", data.user, data.pass)
     status, result = database:checkPassEquality(data.user, data.pass)
     if status and result then
-        print("accepted")
         activeUser.loggedInUsername = data.user
     else
-        print("rejected")
         userSendError(client, activeUser, "rejected_pass")
         return false
     end

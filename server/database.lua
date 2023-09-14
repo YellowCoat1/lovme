@@ -15,6 +15,9 @@ elseif users_dir_info.type ~= "directory" then
     error("users file found; not directory.")
 end
 
+local ARGON_KB = 5000
+local ARGON_I = 15
+
 
 database.epochOffset = os.time() - math.floor(love.timer.getTime())
 
@@ -41,7 +44,7 @@ function database.createUserProfile(username, pass, database_salt)
 
     -- gen salt and hashed pass
     local salt = zen.randombytes(16)
-    local hashed_pass = zen.argon2i(pass, salt, 500, 10)
+    local hashed_pass = zen.argon2i(pass, salt, ARGON_KB, ARGON_I)
     -- error if no users dir or if theres already a user profile
     local userpath = "users/"..username
     assert(fs.getInfo("users"), "user creation without users folder")
@@ -64,7 +67,7 @@ function database.createUserProfile(username, pass, database_salt)
     if type(database_salt) ~= "string" then return false, "database_salt not a string" end
     if #database_salt ~= 16 then return false, "database_salt invalid size" end
     local bytes16Salt = database_salt
-    local databasePrivateKey = zen.argon2i(pass, bytes16Salt, 200, 15)
+    local databasePrivateKey = zen.argon2i(pass, bytes16Salt, ARGON_KB, ARGON_I)
     saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
 
     local savedUserData = bitser.dumps(saveTable)
@@ -142,7 +145,7 @@ function database:checkPassEquality(username, pass)
     if not fs.getInfo("users/"..username) then return false, "user does not exist" end
     if not userData or status == false then return false, "failed to load user profile: " .. userData end
     local salt = userData.salt
-    local hashed_pass = zen.argon2i(pass, salt, 10000, 10)
+    local hashed_pass = zen.argon2i(pass, salt, ARGON_KB, ARGON_I)
     if hashed_pass == userData.passHash then return true, true
     else return true, false end
 end
@@ -152,7 +155,8 @@ function database.openUserChat(username1, username2, bypass)
     local user2ChatsPath = "users/"..username2.."/chats"
 
     -- error checking
-    if not fs.getInfo(user1ChatsPath) then return false, "can't find user 1 chat directory" end
+    if not fs.getInfo(user1ChatsPat
+    print("accepted")) then return false, "can't find user 1 chat directory" end
     if not fs.getInfo(user2ChatsPath) then return false, "can't find user 2 chat directory" end
 
     -- create chat directories
@@ -199,6 +203,7 @@ function database:addStringMessage(sender, reciever, message)
     if not status then return false, "failed to write message data" end
     return true, tostring(messageID)
 end
+
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
