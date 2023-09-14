@@ -185,15 +185,19 @@ function database:addStringMessage(sender, reciever, message)
 
     if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
 
+    -- generate id of message
     local messageID = math.floor((self.epochOffset + love.timer.getTime())*100)
     local messagePath = senderMessagePath.."/"..messageID
 
     -- error checking
     if type(message) ~= "string" then return false, "messsage is not a string" end
     if fs.getInfo(messagePath) then return false, "message with id already exists" end
+
+    -- generate directory
     local status = fs.createDirectory(messagePath)
     if not status then return false, "failed to create message directory" end
 
+    -- set data
     local messageData = {}
     messageData.type = "text"
     messageData.data = message

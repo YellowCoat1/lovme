@@ -66,27 +66,21 @@ end)
 sock_client:on("login-success", function(data)
     data = crypto.decrypt(data)
     local sendTable = {}
-    sendTable.SID = sock_client.test_id
-    sendTable.data = {}
-    sendTable.data.requestedUsername = "user2"
-    _, sendTable.data = crypto.encrypt(sendTable.data, sock_client.shared_key)
-    sock_client:send("database_public_key_req", sendTable)
+    sendTable.requestedUsername = "user2"
+    sendToServer("database_public_key_req", sendTable)
 end)
 
 sock_client:on("key_req_response", function(data)
     local status, data = crypto.decrypt(data, sock_client.shared_key)
     if not data then return end
     database_public_keys["user2"] = data.returnKey
+
 end)
 
 
 sock_client:on("ping", function()
-    local sendTable = {}
     local sesh_id = sock_client.test_id
-    sendTable.SID = sesh_id
-    sendTable.data = {}
-    _, sendTable.data = crypto.encrypt(sendTable.data, sock_client.shared_key)
-    sock_client:send("pong", sendTable)
+    sendToServer("pong", {})
 end)
 
 -- for debugging
