@@ -209,26 +209,34 @@ end
 
 database.getMessage = {}
 
-function database.getMessage:Last(sender, reciever)
+function database.getMessage:Last(sender, reciever, both)
+    
     local senderPath = "users/"..sender.."/"
-    if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end
-    local senderMessagePath = sender.."messages/"..reciever
+    local senderMessagePath = senderPath.."messages/"..reciever
+
+    if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end 
     if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
 
-    if not reciever then
+
+    if both then
         local recieverPath = "users/".. reciever .."/"
-        if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end
-        local recieverMessagePath = reciever .."messages/".. sender
+        local recieverMessagePath = recieverPath .."messages/".. sender
+
+        if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end 
         if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
 
-        local senderMessages = love.filesystem.getDirectoryItems(senderPath)
-        local recieverMessages = love.filesystem.getDirectoryItems(recieverPath)
 
+        local senderMessages = fs.getDirectoryItems(senderMessagePath)
+        local recieverMessages = fs.getDirectoryItems(recieverMessagePath)
+
+        if not senderMessages or not recieverMessages then return false end
+
+        --checks for empty directories
         if #recieverMessages == 0 then
             if #senderMessages == 0 then
                 return false, "no last message"
             else
-                return self.Last(sender)
+                return self.Last(sender, reciever)
             end
         end
 
@@ -251,20 +259,39 @@ function database.getMessage:Last(sender, reciever)
         end
 
         if lastRecieverMessage > lastSenderMessage then
-            return self.fromID(lastRecieverMessage)
+            return self.fromID(sender, reciever, lastRecieverMessage)
         else
-            return self.fromID(lastSenderMessage)
+            return self.fromID(sender, reciever, lastSenderMessage)
         end
 
     else
 
-    end
+        local senderMessages = fs.getDirectoryItems(senderMessagePath)
 
+        if not senderMessages then return false end
+        if #senderMessages == 0 then return false end
+
+        -- set lastSenderMessage to the largest number in senderMessages
+        local lastSenderMessage = tonumber(senderMessages[1])
+        for i,v in senderMessages do
+            local messageTime = tonumber(v)
+            if lastSenderMessage < messageTime then
+                lastSenderMessage = messageTime
+            end
+        end
+
+        return self.fromID(sender, reciever, lastSenderMessage)
+
+    end
 
 end
 
-function database.getMessage.fromID(messageID)
-
+function database.getMessage.fromID(sender, reciever, messageID)
+    local messagePath = "users/"..sender .. "/chats/" .. reciever .. "/messages/"..messageID
+    if not fs.getInfo(messagePath) then return false end
+    local serializedMessage = fs.read(messagePath)
+    local message = bitser.loads(serializedMessage)
+    return message
 end
 
 function database.getMessage.afterID()
