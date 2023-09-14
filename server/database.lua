@@ -207,6 +207,70 @@ function database:addStringMessage(sender, reciever, message)
     return true, tostring(messageID)
 end
 
+database.getMessage = {}
+
+function database.getMessage:Last(sender, reciever)
+    local senderPath = "users/"..sender.."/"
+    if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end
+    local senderMessagePath = sender.."messages/"..reciever
+    if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+
+    if not reciever then
+        local recieverPath = "users/".. reciever .."/"
+        if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end
+        local recieverMessagePath = reciever .."messages/".. sender
+        if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+
+        local senderMessages = love.filesystem.getDirectoryItems(senderPath)
+        local recieverMessages = love.filesystem.getDirectoryItems(recieverPath)
+
+        if #recieverMessages == 0 then
+            if #senderMessages == 0 then
+                return false, "no last message"
+            else
+                return self.Last(sender)
+            end
+        end
+
+        -- set lastSenderMessage to the largest number in senderMessages
+        local lastSenderMessage = senderMessages[1]
+        for i,v in senderMessages do
+            local messageTime = tonumber(v)
+            if lastSenderMessage < messageTime then
+                lastSenderMessage = messageTime
+            end
+        end
+
+        -- set lastRecieverMessage to the largest number in recieverMessages
+        local lastRecieverMessage = recieverMessages[1]
+        for i,v in recieverMessages do
+            local messageTime = tonumber(v)
+            if lastRecieverMessage < messageTime then
+                lastRecieverMessage = messageTime
+            end
+        end
+
+        if lastRecieverMessage > lastSenderMessage then
+            return self.fromID(lastRecieverMessage)
+        else
+            return self.fromID(lastSenderMessage)
+        end
+
+    else
+
+    end
+
+
+end
+
+function database.getMessage.fromID(messageID)
+
+end
+
+function database.getMessage.afterID()
+
+end
+
 
 -- database location: ~/.local/share/love/LOVME_server
 return database
