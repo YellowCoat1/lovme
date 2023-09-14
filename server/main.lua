@@ -176,7 +176,7 @@ function ClientUpdate(id, activeUser, time)
     local removeTable = {}
 
     -- if inactive for >3 seconds, ping.
-    if time > (activeUser.lastActive + 3) and (not activeUser.waitingForPing) then
+    if time > (activeUser.lastActive + 1) and (not activeUser.waitingForPing) then
         activeUser.waitingForPing = true
         activeUser.client:send("ping")
         -- if inactive for >10 seconds, kill.
