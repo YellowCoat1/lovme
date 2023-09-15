@@ -67,6 +67,10 @@ local function emptyPong(data, client)
     user_message(data, client)
 end
 
+local function emptyPing(data, client)
+    user_message(data, client)
+end
+
 -- user connect, handles filing user key and user object creation
 local function userConnect(data, client)
     local ServerSecKey = zen.randombytes(32)
@@ -117,7 +121,11 @@ local function message_send(data, client)
         return
     end
 
-    local status, messageID = database:addStringMessage(username, data.reciever, data.message)
+    if data.reciever == username then
+        userSendError(client, activeUser, "send_to_self")
+    end
+
+    local status, messageID = database:addMessage(username, data.reciever, data.message, data.nonce)
     if not status then
         userSendError(client, activeUser, "message_send_fail")
         return
@@ -125,9 +133,8 @@ local function message_send(data, client)
 
     local sendTable = {}
     sendTable.messageID = messageID
-    local encryptedSendTable = crypto.encrypt(sendTable)
+    local encryptedSendTable = crypto.encrypt(sendTable, activeUser.sharedKey)
     client:send("message_send_success", encryptedSendTable)
-
 end
 
 local function database_public_key_request(data, client)
@@ -144,18 +151,39 @@ local function database_public_key_request(data, client)
     
     local sendTable = {}
     sendTable.returnKey = result
-    local encryptedSendTable = crypto.encrypt(sendTable)
+    local status, encryptedSendTable = crypto.encrypt(sendTable, activeUser.sharedKey)
+    if not status then
+        print(encryptedSendTable)
+        return
+    end
     client:send("key_req_response", encryptedSendTable)
+end
+
+local function message_request(data, client)
+    local sessionID, status, result
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then return false end
+    local activeUser = ActiveUsers[sessionID]
+
+    if not data.sender or not data.reciever then return end
+    local status, err = database.getMessage:Last(data.sender, data.reciever, true)
+    if not status then print("o no: ".. err) return end
+
+    local status, result = crypto.encrypt(status, activeUser.sharedKey)
+    client:send("message_response", result)
+
 end
 
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
+    LovmeServer:on("ping", ping)
     LovmeServer:on("pong", emptyPong)
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("connected", userConnect)
     LovmeServer:on("login", userLogin)
     LovmeServer:on("message_send", message_send)
     LovmeServer:on("database_public_key_req", database_public_key_request)
+    LovmeServer:on("message_req", message_request)
 end
 
 -- -- on load

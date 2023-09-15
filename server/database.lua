@@ -175,7 +175,7 @@ function database.openUserChat(username1, username2, bypass)
 
 end
 
-function database:addStringMessage(sender, reciever, message)
+function database:addMessage(sender, reciever, message, nonce)
     self.openUserChat(sender, reciever, true)
     local senderMessagePath = "users/"..sender.."/chats/"..reciever.."/messages"
 
@@ -183,14 +183,13 @@ function database:addStringMessage(sender, reciever, message)
     -- type: string     type of the message (text|image)
     -- data: any        the message itself     
 
-    if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+    if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory." end
 
     -- generate id of message
     local messageID = math.floor((self.epochOffset + love.timer.getTime())*100)
     local messagePath = senderMessagePath.."/"..messageID
 
     -- error checking
-    if type(message) ~= "string" then return false, "messsage is not a string" end
     if fs.getInfo(messagePath) then return false, "message with id already exists" end
 
     -- generate directory
@@ -199,8 +198,9 @@ function database:addStringMessage(sender, reciever, message)
 
     -- set data
     local messageData = {}
-    messageData.type = "text"
+    messageData.nonce = nonce
     messageData.data = message
+    
     local serializedMessageData = bitser.dumps(messageData)
     status = fs.write(messagePath.."/messageData", serializedMessageData)
     if not status then return false, "failed to write message data" end
@@ -210,33 +210,32 @@ end
 database.getMessage = {}
 
 function database.getMessage:Last(sender, reciever, both)
-    
     local senderPath = "users/"..sender.."/"
-    local senderMessagePath = senderPath.."messages/"..reciever
+    local senderMessagePath = senderPath .."chats/"..reciever.."/messages/"
 
-    if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end 
-    if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+    if not fs.getInfo(senderPath) then return false, "failed to get sender user directory" end 
+    if not fs.getInfo(senderMessagePath) then return false, "failed to get sender messages directory" end
 
 
     if both then
         local recieverPath = "users/".. reciever .."/"
-        local recieverMessagePath = recieverPath .."messages/".. sender
+        local recieverMessagePath = recieverPath .."chats/"..sender.."/messages/"
 
-        if not fs.getInfo(senderPath) then return false, "failed to get messages directory" end 
-        if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory" end
+        if not fs.getInfo(recieverPath) then return false, "failed to get reciever user directory" end 
+        if not fs.getInfo(recieverMessagePath) then return false, "failed to get reciever messages directory" end
 
 
         local senderMessages = fs.getDirectoryItems(senderMessagePath)
         local recieverMessages = fs.getDirectoryItems(recieverMessagePath)
 
-        if not senderMessages or not recieverMessages then return false end
+        if not senderMessages or not recieverMessages then return false, "messages dir not found" end
 
         --checks for empty directories
         if #recieverMessages == 0 then
             if #senderMessages == 0 then
                 return false, "no last message"
             else
-                return self.Last(sender, reciever)
+                return self:Last(sender, reciever)
             end
         end
 
@@ -268,12 +267,12 @@ function database.getMessage:Last(sender, reciever, both)
 
         local senderMessages = fs.getDirectoryItems(senderMessagePath)
 
-        if not senderMessages then return false end
-        if #senderMessages == 0 then return false end
+        if not senderMessages then return false, "messages dir not found" end
+        if #senderMessages == 0 then return false, "no messages found" end
 
         -- set lastSenderMessage to the largest number in senderMessages
         local lastSenderMessage = tonumber(senderMessages[1])
-        for i,v in senderMessages do
+        for i,v in pairs(senderMessages) do
             local messageTime = tonumber(v)
             if lastSenderMessage < messageTime then
                 lastSenderMessage = messageTime
@@ -287,8 +286,8 @@ function database.getMessage:Last(sender, reciever, both)
 end
 
 function database.getMessage.fromID(sender, reciever, messageID)
-    local messagePath = "users/"..sender .. "/chats/" .. reciever .. "/messages/"..messageID
-    if not fs.getInfo(messagePath) then return false end
+    local messagePath = "users/"..sender .. "/chats/" .. reciever .. "/messages/"..messageID.."/messageData"
+    if not fs.getInfo(messagePath) then return false, "could not find message path" end
     local serializedMessage = fs.read(messagePath)
     local message = bitser.loads(serializedMessage)
     return message
