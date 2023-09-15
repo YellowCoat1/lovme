@@ -173,9 +173,9 @@ end
 
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
-    LovmeServer:on("ping", ping)
-    LovmeServer:on("pong", emptyPong)
+    LovmeServer:on("ping", emptyPing)
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
+    LovmeServer:on("disconnect", function() end) -- empty disconnect function, purely to suppress errors
     LovmeServer:on("connected", userConnect)
     LovmeServer:on("login", userLogin)
     LovmeServer:on("message_send", message_send)
