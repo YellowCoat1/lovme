@@ -92,6 +92,7 @@ sock_client:on("key_req_response", function(data)
     database_public_keys["user2"] = data.returnKey
 
     local sendTable = {}
+    sendTable.messageType = "last_both"
     sendTable.sender = "user1"
     sendTable.reciever = "user2"
     sendToServer("message_req", sendTable)
@@ -113,6 +114,7 @@ end)
 sock_client:on("message_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, sock_client.shared_key)
+    -- if true then return false end
     --if not status or not data then print(data) return end
 
     local database_shared_key = zen.key_exchange(sock_client.database_secret, database_public_keys["user2"])
@@ -151,6 +153,7 @@ end)
 
 function connection.update()
     sock_client:update()
+
     local roundTripTime = sock_client:getRoundTripTime() / 1000
     local timeout = roundTripTime + 1
     if last_server_active + timeout < love.timer.getTime() then

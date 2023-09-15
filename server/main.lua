@@ -162,11 +162,34 @@ local function message_request(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    if not data.sender or not data.reciever then return end
-    local status, err = database.getMessage:Last(data.sender, data.reciever, true)
+    local username = activeUser.loggedInUsername
+    if username == nil then
+        userSendError(client, activeUser, "not_logged_in")
+        return
+    elseif not database.doesUserExist(username) then
+        userSendError(client, activeUser, "credentials_invalid")
+        return
+    end
+
+    local status, err
+    if not data.messageType then 
+        userSendError(client, activeUser, "malformed_message")
+    end
+
+    if data.messageType == "last_both" then
+        status, err = database.getMessage:Last(username, data.reciever, true)
+    elseif data.messageType == "last_one" then
+        status, err = database.getMessage:Last(username, data.reciever)
+    elseif data.messageType == "from_id" then
+        status, err = database.getMessage:fromID(username, data.messageID)
+    elseif data.messageType == "next_id" then
+        status, err = database.getMessage:nextID(username, data.messageID)
+    end
+
     if not status then print("o no: ".. err) return end
 
-    local status, result = crypto.encrypt(status, activeUser.sharedKey)
+    status, result = crypto.encrypt(status, activeUser.sharedKey)
+    if not status then return end
     client:send("message_response", result)
 
 end
