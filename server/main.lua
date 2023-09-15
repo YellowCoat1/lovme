@@ -63,12 +63,9 @@ local function userSendError(client, activeUser, message)
     return true
 end
 
-local function emptyPong(data, client)
-    user_message(data, client)
-end
-
 local function emptyPing(data, client)
     user_message(data, client)
+    client:send("pong")
 end
 
 -- user connect, handles filing user key and user object creation
@@ -203,12 +200,8 @@ function ClientUpdate(id, activeUser, time)
     -- table for users to be removed
     local removeTable = {}
 
-    -- if inactive for >3 seconds, ping.
-    if time > (activeUser.lastActive + 1) and (not activeUser.waitingForPing) then
-        activeUser.waitingForPing = true
-        activeUser.client:send("ping")
-        -- if inactive for >10 seconds, kill.
-    elseif time > (activeUser.lastActive + 10) then
+    -- if inactive for >10 seconds, kill.
+    if time > (activeUser.lastActive + 10) then
         table.insert(removeTable, activeUser.sessionID)
     end
 
@@ -222,9 +215,22 @@ function love.update()
     -- update server
     LovmeServer:update()
 
-    -- updates active clients
     local time = love.timer.getTime()
-    for id, activeUser in pairs(ActiveUsers) do
-        ClientUpdate(id, activeUser, time)
+    local removeTable = {}
+
+    -- if inactive for >10 seconds, kill.
+
+    for _,activeUser in pairs(ActiveUsers) do
+        if time > (activeUser.lastActive + 10) then
+            table.insert(removeTable, activeUser.sessionID)
+        end
     end
+
+    -- iter through remove table and remove users
+    for _, v in pairs(removeTable) do
+        ActiveUsers[v] = nil
+    end
+
+    -- updates active clients
+
 end

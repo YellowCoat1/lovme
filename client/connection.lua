@@ -151,7 +151,9 @@ end)
 
 function connection.update()
     sock_client:update()
-    if last_server_active > love.timer.getTime() then
+    local roundTripTime = sock_client:getRoundTripTime() / 1000
+    local timeout = roundTripTime + 1
+    if last_server_active + timeout < love.timer.getTime() then
         sendToServer("ping", {})
     end
 end
