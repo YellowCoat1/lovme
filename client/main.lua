@@ -9,9 +9,8 @@ local gui = require 'gui'
 
 
 function love.load(args)
-    ARGS = args
-    if not ARGS[1] then ARGS[1] = "user1" end
-    if not ARGS[2] then ARGS[2] = "password" end
+
+    
     connection = require 'connection'
 end
 

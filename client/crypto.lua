@@ -9,7 +9,7 @@ local zen = require 'luazen' -- cryptography
 -- key generation
 function crypto.gen_keys()
     local dh_sk = zen.randombytes(32)
-    local dh_pk = zen.x25519_public_key(crypto.dh_sk)
+    local dh_pk = zen.x25519_public_key(dh_sk)
     return dh_sk, dh_pk
 end
 
