@@ -5,6 +5,7 @@ package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
 local connection
+local gui = require 'gui'
 
 
 function love.load(args)
