@@ -9,10 +9,10 @@ local SERVER_PORT = 22123
 
 local sock_client = sock.newClient("localhost", SERVER_PORT)
 local client_secret_key, client_public_key = crypto.gen_keys()
-local connection.public_keys = {}
+connection.public_keys = {}
 
-local USERNAME = ARGS[1]
-local PASSWORD = ARGS[2]
+
+local login_username
 
 local ARGON_KB = 5000
 local ARGON_I = 15
@@ -180,7 +180,7 @@ function connection.update()
 
     sock_client:update()
 
-    local roundTripTime = sock_client:getRoundTripTime() / 1000
+    local roundTripTime = 0.03 --sock_client:getRoundTripTime() / 1000
     local timeout = roundTripTime + 1
     if last_server_active + timeout < love.timer.getTime() then
         sendToServer("ping", {})
