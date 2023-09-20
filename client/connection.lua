@@ -39,6 +39,7 @@ local function messageFromServer(data)
         if not status or not data then return false end
         return true, data
     end
+    return true
 end
 
 local function sendToServer(message, sendData)
@@ -111,7 +112,7 @@ function connection.sendStringMessage(recipiant)
     sendTable.message = bitser.dumps(sendTable.message)
     sendTable.message = zen.encrypt(database_shared_key, sendTable.nonce, sendTable.message)
     local status = sendToServer("message_send", sendTable)
-    if not status then return false, "server send failed"
+    if not status then return false, "server send failed" end
 end
 
 
@@ -133,10 +134,12 @@ sock_client:on("key_response", function(data)
     messageFromServer()
     session_id = data.sessionID
     shared_key = zen.key_exchange(client_secret_key, data.spk)
+    connection.connectionEstablished = true
 end)
 
 sock_client:on("login-success", function()
     messageFromServer()
+    loginResponse()
 end)
 
 sock_client:on("key_req_response", function(data)
@@ -164,9 +167,10 @@ sock_client:on("ping", function()
     sendToServer("pong", {})
 end)
 
-sock_client:on("pong", function() 
-    messageFromServer() 
+sock_client:on("pong", function ()
+    messageFromServer()
 end)
+
 
 -- for debugging
 sock_client:on("usr_error", function(data)

@@ -7,11 +7,22 @@ package.path = package.path .. ';./' .. libPath .. '/?.lua'
 local connection = require 'connection'
 local gui = require 'gui'
 
+local timerState = 0
+local dtimer = 0
+
 
 function love.load(args)
-
+    connection.setLoginResponse(function()
+        print("login has been responsed")
+    end)
 end
 
-function love.update()
+function love.update(dt)
     connection.update()
+    dtimer = dtimer + dt
+
+    if dtimer > 3 and timerState == 0 then
+        timerState = 1
+        print("login", connection:login("user1", "password"))
+    end
 end
