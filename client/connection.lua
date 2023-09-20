@@ -1,5 +1,7 @@
 local connection = {}
 
+local eventQueue = {}
+
 local sock = require 'sock'
 local zen = require 'luazen'
 
@@ -8,10 +10,14 @@ local crypto = require 'crypto'
 local SERVER_PORT = 22123
 
 local sock_client = sock.newClient("localhost", SERVER_PORT)
+sock_client:connect()
+
 local client_secret_key, client_public_key = crypto.gen_keys()
 connection.public_keys = {}
 
+connection.connectionEstablished = false
 
+local loggedIn
 local login_username
 
 local ARGON_KB = 5000
@@ -51,15 +57,8 @@ local function sendToServer(message, sendData)
     return true
 end
 
-function connection.connect()
-    sock_client:connect()
-    local sendTable = {}
-    sendTable.upk = client_public_key
-    sock_client:send("connected", sendTable)
-end
-
 function connection:login(username, password)
-
+    if not connection.connectionEstablished then return false, "connection not established" end
     local sendTable = {}
     sendTable.user = username
     sendTable.pass = password
@@ -71,18 +70,24 @@ function connection:login(username, password)
     sendTable.database_key_salt = bytes16Salt
     
     local status = sendToServer("login", sendTable)
-    if not status then print("server send failed") end
+    if not status then return false, "server send failed" end
+
+    return true
 end
 
-function connection:logout()
-    database_secret = nil
-    database_public = nil
-end
+-- function connection:logout()
+--     database_secret = nil
+--     database_public = nil
+-- end
 
 function connection.request_database_public_key(username)
+    if not connection.connectionEstablished then return false, "connection not established" end
+    if not loggedIn then return false, "not logged in" end
     local sendTable = {}
     sendTable.requestedUsername = username
-    sendToServer("database_public_key_req", sendTable)
+    local status = sendToServer("database_public_key_req", sendTable)
+    if not status then return false, "server send failed" end
+    return true
 end
 
 function connection.request_message()
@@ -105,7 +110,8 @@ function connection.sendStringMessage(recipiant)
     sendTable.message.data = "hello there!"
     sendTable.message = bitser.dumps(sendTable.message)
     sendTable.message = zen.encrypt(database_shared_key, sendTable.nonce, sendTable.message)
-    sendToServer("message_send", sendTable)
+    local status = sendToServer("message_send", sendTable)
+    if not status then return false, "server send failed"
 end
 
 
@@ -118,6 +124,9 @@ end
 
 sock_client:on("connect", function()
     messageFromServer()
+    local sendTable = {}
+    sendTable.upk = client_public_key
+    sock_client:send("connected", sendTable)
 end)
 
 sock_client:on("key_response", function(data)
@@ -133,14 +142,13 @@ end)
 sock_client:on("key_req_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
-    if not status or not data then print(data) return end
+    if not status or not data then return false, "decryption failed" end
 
     local database_public_key = data.returnKey
-    local database_shared_key = zen.key_exchange(sock_client.database_secret, database_public_keys["user2"])
-    connection.shared_keys[data.replyUsername] = data.returnKey
-    zen.key_exchange(sock_client.database_secret, database_public_keys["user2"])
+    local database_shared_key = zen.key_exchange(sock_client.database_secret, database_public_key)
+    connection.shared_keys[data.replyUsername] = database_shared_key
 
-    database_shared_keys[recipiant] = data.returnKey
+    return true
 end)
 
 sock_client:on("message_response", function(data)

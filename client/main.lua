@@ -4,14 +4,12 @@ local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
-local connection
+local connection = require 'connection'
 local gui = require 'gui'
 
 
 function love.load(args)
 
-    
-    connection = require 'connection'
 end
 
 function love.update()
