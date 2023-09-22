@@ -195,7 +195,6 @@ local function message_request(data, client)
 
     local sendTable = {}
     sendTable.message = status.message
-    for i,v in pairs(status) do print("S",i,v) end
     sendTable.sender = status.sender
     sendTable.other = data.reciever
     sendTable.askType = data.messageType
