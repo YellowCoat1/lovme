@@ -186,7 +186,7 @@ function database:addMessage(sender, reciever, message, nonce)
     if not fs.getInfo(senderMessagePath) then return false, "failed to get messages directory." end
 
     -- generate id of message
-    local messageID = math.floor((self.epochOffset + love.timer.getTime())*100)
+    local messageID = math.floor((self.epochOffset + love.timer.getTime())*100) --ms since epoch
     local messagePath = senderMessagePath.."/"..messageID
 
     -- error checking
@@ -199,6 +199,7 @@ function database:addMessage(sender, reciever, message, nonce)
     -- set data
     local messageData = {}
     messageData.nonce = nonce
+    messageData.type = "text"
     messageData.data = message
     
     local serializedMessageData = bitser.dumps(messageData)
@@ -290,10 +291,13 @@ function database.getMessage.fromID(sender, reciever, messageID)
     if not fs.getInfo(messagePath) then return false, "could not find message path" end
     local serializedMessage = fs.read(messagePath)
     local message = bitser.loads(serializedMessage)
-    return message
+    local returnTable = {}
+    returnTable.message = message
+    returnTable.sender = sender
+    return returnTable
 end
 
-function database.getMessage.afterID()
+function database.getMessage.afterID(sender, reciever, messageID)
 
 end
 

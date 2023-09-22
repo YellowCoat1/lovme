@@ -74,6 +74,7 @@ function connection:login(username, password)
     if not status then return false, "server send failed" end
 
     login_username = username
+    loggedIn = true
     return true
 end
 
@@ -104,16 +105,16 @@ function connection.request_message(reciever)
     return true
 end
 
-function connection.sendStringMessage(recipiant)
+function connection.sendStringMessage(recipiant, message)
     if not loggedIn then return false, "not_logged_in" end
     local database_shared_key = database_shared_keys[recipiant]
-    if not database_shared_key then return false, "key not found" end
+    if not database_shared_key then return false, "database key not found" end
     local sendTable = {}
     sendTable.reciever =  recipiant
     sendTable.nonce = zen.randombytes(24)
     sendTable.message = {}
     sendTable.message.type = "text"
-    sendTable.message.data = "hello there!"
+    sendTable.message.data = message
     sendTable.message = bitser.dumps(sendTable.message)
     sendTable.message = zen.encrypt(database_shared_key, sendTable.nonce, sendTable.message)
     local status = sendToServer("message_send", sendTable)
@@ -125,6 +126,12 @@ local function loginResponse() end
 function connection.setLoginResponse(loginResponseFunction)
     if type(loginResponseFunction) ~= "function" then return false end
     loginResponse = loginResponseFunction
+    return true
+end
+local function messageResponse(data) end
+function connection.setMessageResponse(messageResponseFunction)
+    if type(messageResponseFunction) ~= "function" then return false end
+    messageResponse = messageResponseFunction
     return true
 end
 
@@ -150,11 +157,12 @@ end)
 sock_client:on("key_req_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
-    if not status or not data then return false, "decryption failed" end
+    if not status or not data then return end
+    if not data.returnKey or not data.replyUsername then return end
 
     local database_public_key = data.returnKey
-    local database_shared_key = zen.key_exchange(sock_client.database_secret, database_public_key)
-    connection.shared_keys[data.replyUsername] = database_shared_key
+    local database_shared_key = zen.key_exchange(database_secret, database_public_key)
+    database_shared_keys[data.replyUsername] = database_shared_key
 
     return true
 end)
@@ -163,8 +171,11 @@ sock_client:on("message_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
     if not status or not data then print(data) return end
-    print("message_response")
-    connection.message_response(data)
+
+    local databaseSharedKey = database_shared_keys[data.other]
+    local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
+    local message = bitser.loads(serializedMessage)
+    messageResponse(message)
 end)
 
 sock_client:on("ping", function()

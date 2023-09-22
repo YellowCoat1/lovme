@@ -148,6 +148,7 @@ local function database_public_key_request(data, client)
     
     local sendTable = {}
     sendTable.returnKey = result
+    sendTable.replyUsername = data.requestedUsername
     local status, encryptedSendTable = crypto.encrypt(sendTable, activeUser.sharedKey)
     if not status then
         print(encryptedSendTable)
@@ -176,25 +177,27 @@ local function message_request(data, client)
         userSendError(client, activeUser, "malformed_message")
     end
 
+    if not data.reciever then userSendError(client, activeUser, "malformed_message") return end
 
     if data.messageType == "last_both" then
-        if not data.reciever then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:Last(username, data.reciever, true)
     elseif data.messageType == "last_one" then
-        if not data.reciever then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:Last(username, data.reciever)
     elseif data.messageType == "from_id" then
         if not data.messageID then userSendError(client, activeUser, "malformed_message") return end
-        status, err = database.getMessage:fromID(username, data.messageID)
+        status, err = database.getMessage.fromID(username, data.reciever, data.messageID)
     elseif data.messageType == "next_id" then
         if not data.messageID then userSendError(client, activeUser, "malformed_message") return end
-        status, err = database.getMessage:nextID(username, data.messageID)
+        status, err = database.getMessage.nextID(username, data.reciever, data.messageID)
     end
 
     if not status then userSendError(client, activeUser, "message_err: "..err) return end
 
     local sendTable = {}
-    sendTable.message = status
+    sendTable.message = status.message
+    for i,v in pairs(status) do print("S",i,v) end
+    sendTable.sender = status.sender
+    sendTable.other = data.reciever
     sendTable.askType = data.messageType
 
     status, result = crypto.encrypt(sendTable, activeUser.sharedKey)
