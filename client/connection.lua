@@ -73,6 +73,7 @@ function connection:login(username, password)
     local status = sendToServer("login", sendTable)
     if not status then return false, "server send failed" end
 
+    login_username = username
     return true
 end
 
@@ -91,12 +92,16 @@ function connection.request_database_public_key(username)
     return true
 end
 
-function connection.request_message()
+function connection.request_message(reciever)
+    if not connection.connectionEstablished then return false, "connection not established" end
+    if not login_username then return false, "no username" end
+    if not reciever then return false, "invalid arguments" end
     local sendTable = {}
     sendTable.messageType = "last_both"
-    sendTable.sender = "user1"
-    sendTable.reciever = "user2"
+    sendTable.sender = login_username
+    sendTable.reciever = reciever
     sendToServer("message_req", sendTable)
+    return true
 end
 
 function connection.sendStringMessage(recipiant)
@@ -158,6 +163,7 @@ sock_client:on("message_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
     if not status or not data then print(data) return end
+    print("message_response")
     connection.message_response(data)
 end)
 

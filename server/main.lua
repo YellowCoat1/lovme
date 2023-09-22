@@ -176,19 +176,28 @@ local function message_request(data, client)
         userSendError(client, activeUser, "malformed_message")
     end
 
+
     if data.messageType == "last_both" then
+        if not data.reciever then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:Last(username, data.reciever, true)
     elseif data.messageType == "last_one" then
+        if not data.reciever then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:Last(username, data.reciever)
     elseif data.messageType == "from_id" then
+        if not data.messageID then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:fromID(username, data.messageID)
     elseif data.messageType == "next_id" then
+        if not data.messageID then userSendError(client, activeUser, "malformed_message") return end
         status, err = database.getMessage:nextID(username, data.messageID)
     end
 
-    if not status then print("o no: ".. err) return end
+    if not status then userSendError(client, activeUser, "message_err: "..err) return end
 
-    status, result = crypto.encrypt(status, activeUser.sharedKey)
+    local sendTable = {}
+    sendTable.message = status
+    sendTable.askType = data.messageType
+
+    status, result = crypto.encrypt(sendTable, activeUser.sharedKey)
     if not status then return end
     client:send("message_response", result)
 

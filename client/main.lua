@@ -24,5 +24,8 @@ function love.update(dt)
     if dtimer > 3 and timerState == 0 then
         timerState = 1
         print("login", connection:login("user1", "password"))
+    elseif dtimer > 5 and timerState == 1 then
+        timerState = 2
+        print("last", connection.request_message("user2"))
     end
 end

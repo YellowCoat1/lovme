@@ -297,6 +297,5 @@ function database.getMessage.afterID()
 
 end
 
-
 -- database location: ~/.local/share/love/LOVME_server
 return database
