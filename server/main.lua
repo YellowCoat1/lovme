@@ -205,6 +205,26 @@ local function message_request(data, client)
 
 end
 
+local function registerUser(data, client)
+    local sessionID, status, result
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then return false end
+    local activeUser = ActiveUsers[sessionID]
+
+    local loginUsername, loginPass, loginDatabasePublicKey = data.username, data.password, data.dbPk
+
+    if not loginUsername or not loginPass or not loginDatabasePublicKey then 
+        userSendError(client, activeUser, "malformed_message")
+        return
+    end
+
+    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabasePublicKey)
+    if not status then userSendError(client, activeUser, "reg_fail") end
+
+    client:send("register_sucess")
+    return
+end
+
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
     LovmeServer:on("ping", emptyPing)
@@ -215,6 +235,7 @@ local function loadServerCallbacks()
     LovmeServer:on("message_send", message_send)
     LovmeServer:on("database_public_key_req", database_public_key_request)
     LovmeServer:on("message_req", message_request)
+    LovmeServer:on("register", registerUser)
 end
 
 -- -- on load
