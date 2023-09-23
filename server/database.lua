@@ -34,7 +34,7 @@ local function test_username(username)
 end
 
 -- create a profile for a user in the database
-function database.createUserProfile(username, pass, database_salt)
+function database.createUserProfile(username, pass, databasePublicKey)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
     
@@ -63,12 +63,7 @@ function database.createUserProfile(username, pass, database_salt)
 
     -- database public key for the user
     -- used for decrpyting conversations
-    if not database_salt then return false, "database_salt not found" end
-    if type(database_salt) ~= "string" then return false, "database_salt not a string" end
-    if #database_salt ~= 16 then return false, "database_salt invalid size" end
-    local bytes16Salt = database_salt
-    local databasePrivateKey = zen.argon2i(pass, bytes16Salt, ARGON_KB, ARGON_I)
-    saveTable.DatabasePublicKey = zen.x25519_public_key(databasePrivateKey)
+    saveTable.DatabasePublicKey = databasePublicKey
 
     local savedUserData = bitser.dumps(saveTable)
     local status, err = fs.write(userpath.."/userdata", savedUserData)
