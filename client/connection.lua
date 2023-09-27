@@ -26,6 +26,7 @@ local ARGON_I = 15
 local session_id = nil
 local shared_key = nil
 local database_shared_keys = {}
+
 local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
 
 local database_secret = nil
@@ -39,8 +40,8 @@ local function messageFromServer(data)
     if data then 
         local status, result = pcall(function()
             local status, data = crypto.decrypt(data, shared_key)
-            if not status or not data then return false end
-            return true, data
+            if not status or not data then error() end
+            return data
         end)
         if not status then return false end
         return true, result
@@ -70,8 +71,16 @@ function connection:login(username, password)
     sendTable.user = username
     sendTable.pass = password
 
+    
+    
+    if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
+    elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
     database_public = zen.x25519_public_key(database_secret)
+
+    print("LOGIN")
+    print(username.."_PUB:", zen.b64encode(database_public))
+    print(username.."_SEC", zen.b64encode(database_secret))
     
 
     local status = sendToServer("login", sendTable)
@@ -84,16 +93,20 @@ end
 
 function connection.registerUser(username, password)
     local sendTable = {}
+    if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
+    elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
     sendTable.username = username
     sendTable.password = password
     sendTable.databaseSalt = database_salt
     sendToServer("register", sendTable)
 end
 
--- function connection:logout()
---     database_secret = nil
---     database_public = nil
--- end
+function connection:logout()
+    database_secret = nil
+    database_public = nil
+    loginUsername = nil
+    database_shared_keys = {}
+end
 
 function connection.request_database_public_key(username)
     if not connection.connectionEstablished then return false, "connection not established" end
@@ -176,18 +189,28 @@ sock_client:on("key_response", function(data)
 end)
 
 sock_client:on("login-success", function(data)
-    data = messageFromServer(data)
+    status, data = messageFromServer(data)
+    database_salt = data.salt 
     loginResponse()
 end)
 
-sock_client:on("key_req_response", function(data)
+sock_client:on("db_key_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
     if not status or not data then return end
     if not data.returnKey or not data.replyUsername then return end
 
-    local database_public_key = data.returnKey
-    local database_shared_key = zen.key_exchange(database_secret, database_public_key)
+    local reciever_database_public_key = data.returnKey
+
+    
+    local database_shared_key = zen.key_exchange(database_secret, reciever_database_public_key)
+
+
+    -- print("USER: "..loggedInUsername)
+    print("SHARED_KEY:", zen.b64encode(database_shared_key))
+    print("T_PUB:", zen.b64encode(reciever_database_public_key))
+    print("T_USR:", data.replyUsername)
+    print("O_SEC:", zen.b64encode(database_secret))
     database_shared_keys[data.replyUsername] = database_shared_key
 
     return true
@@ -199,10 +222,10 @@ sock_client:on("message_response", function(data)
     if not status or not data then print(data) return end
 
     local databaseSharedKey = database_shared_keys[data.other]
+    if not databaseSharedKey then print("WARN: ".."no_shared_key") return end
     local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
-    print(databaseSharedKey)
     local status, message = pcall(bitser.loads, serializedMessage)
-    if not status then return print("o no") end
+    if not status then return print("o no", zen.b64encode(database_salt)) end
     messageResponse(message)
 end)
 

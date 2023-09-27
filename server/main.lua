@@ -168,11 +168,8 @@ local function database_public_key_request(data, client)
     sendTable.returnKey = result
     sendTable.replyUsername = data.requestedUsername
     local status, encryptedSendTable = crypto.encrypt(sendTable, activeUser.sharedKey)
-    if not status then
-        print(encryptedSendTable)
-        return
-    end
-    client:send("key_req_response", encryptedSendTable)
+    if not status then return end
+    client:send("db_key_response", encryptedSendTable)
 end
 
 local function message_request(data, client)
@@ -230,15 +227,19 @@ local function registerUser(data, client)
     local activeUser = ActiveUsers[sessionID]
 
     local loginUsername, loginPass, loginDatabaseSalt = data.username, data.password, data.databaseSalt
+sda
 
+asd
+    result = loginDatabaseSalt
     if not loginUsername or not loginPass or not loginDatabaseSalt then
-        print("e")
+        
         userSendError(client, activeUser, "malformed_message")
         return
     end
 
     status, result = database.createUserProfile(loginUsername, loginPass, loginDatabaseSalt)
     if not status then userSendError(client, activeUser, "reg_fail") return end
+    
 
     client:send("register_sucess")
 end

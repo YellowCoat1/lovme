@@ -73,7 +73,11 @@ function database.createUserProfile(username, pass, databaseSalt)
     local savedUserData = bitser.dumps(saveTable)
     local status, err = fs.write(userpath.."/userdata", savedUserData)
     if not status then io.write(err..'\n') return false, "failed to write user object" end
-    return true
+
+    local returnTable = {}
+    returnTable.pk = databasePublicKey
+
+    return true, returnTable
 end
 
 -- same as rm -r 
@@ -152,6 +156,8 @@ function database.getDatabaseSalt(username)
     if not pubKey then
         return false, "no public database key found"
     end
+
+    
 
     return true, pubKey
 end
@@ -268,7 +274,7 @@ function database.getMessage:Last(sender, reciever, both)
 
 
         -- set lastSenderMessage to the largest number in senderMessages
-        local lastSenderMessage = senderMessages[1]
+        local lastSenderMessage = tonumber(senderMessages[1])
         for i,v in pairs(senderMessages) do
             local messageTime = tonumber(v)
             if lastSenderMessage < messageTime then
@@ -286,7 +292,7 @@ function database.getMessage:Last(sender, reciever, both)
         end
 
         if lastRecieverMessage > lastSenderMessage then
-            return self.fromID(sender, reciever, lastRecieverMessage)
+            return self.fromID(reciever, sender, lastRecieverMessage)
         else
             return self.fromID(sender, reciever, lastSenderMessage)
         end
