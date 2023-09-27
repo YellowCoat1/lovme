@@ -78,11 +78,6 @@ function connection:login(username, password)
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
     database_public = zen.x25519_public_key(database_secret)
 
-    print("LOGIN")
-    print(username.."_PUB:", zen.b64encode(database_public))
-    print(username.."_SEC", zen.b64encode(database_secret))
-    
-
     local status = sendToServer("login", sendTable)
     if not status then return false, "server send failed" end
 
@@ -205,12 +200,6 @@ sock_client:on("db_key_response", function(data)
     
     local database_shared_key = zen.key_exchange(database_secret, reciever_database_public_key)
 
-
-    -- print("USER: "..loggedInUsername)
-    print("SHARED_KEY:", zen.b64encode(database_shared_key))
-    print("T_PUB:", zen.b64encode(reciever_database_public_key))
-    print("T_USR:", data.replyUsername)
-    print("O_SEC:", zen.b64encode(database_secret))
     database_shared_keys[data.replyUsername] = database_shared_key
 
     return true
