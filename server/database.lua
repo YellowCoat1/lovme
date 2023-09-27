@@ -348,7 +348,16 @@ function database.getMessage:next(sender, reciever, messageID, before, both)
 
     -- if we're checking both, check the next dir too.
     if both then
-        local recieverMessageList = fs.getDirectoryItems(senderMessagePath)
+
+
+        -- paths and checks for reciever
+        local recieverPath = "users/"..reciever.."/"
+        local recieverMessagePath = recieverPath .."chats/"..sender.."/messages/"
+        if not fs.getInfo(reciever) then return false, "failed to get sender user directory" end 
+        if not fs.getInfo(recieverMessagePath) then return false, "failed to get sender messages directory" end
+
+
+        local recieverMessageList = fs.getDirectoryItems(recieverMessagePath)
         for i,v in recieverMessageList do
             message = tonumber(v)
             if (message > messageID and not before) or (message < messageID and before) then
