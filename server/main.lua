@@ -227,9 +227,6 @@ local function registerUser(data, client)
     local activeUser = ActiveUsers[sessionID]
 
     local loginUsername, loginPass, loginDatabaseSalt = data.username, data.password, data.databaseSalt
-sda
-
-asd
     result = loginDatabaseSalt
     if not loginUsername or not loginPass or not loginDatabaseSalt then
         

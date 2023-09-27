@@ -319,7 +319,63 @@ function database.getMessage:Last(sender, reciever, both)
 
 end
 
-function database.getMessage.fromID(sender, reciever, messageID)
+function database.getMessage:next(sender, reciever, messageID, before, both)
+
+    -- paths and checks
+    local senderPath = "users/"..sender.."/"
+    local senderMessagePath = senderPath .."chats/"..reciever.."/messages/"
+    if not fs.getInfo(senderPath) then return false, "failed to get sender user directory" end 
+    if not fs.getInfo(senderMessagePath) then return false, "failed to get sender messages directory" end
+    local messagePath = senderMessagePath .. "messageID"
+    if not fs.getInfo(messagePath) then return false, "failed to get message path" end 
+
+    messageID = tonumber(messageID)
+    local foundMessage
+    local foundMessageSource
+
+    -- find next message in sender message dir
+    local message
+    local senderMessageList = fs.getDirectoryItems(senderMessagePath)
+    for i,v in senderMessageList do
+        message = tonumber(v)
+        if (message > messageID and not before) or (message < messageID and before) then
+            foundMessage = message
+            foundMessageSource = "sender"
+            break
+        end
+    end
+
+
+    -- if we're checking both, check the next dir too.
+    if both then
+        local recieverMessageList = fs.getDirectoryItems(senderMessagePath)
+        for i,v in recieverMessageList do
+            message = tonumber(v)
+            if (message > messageID and not before) or (message < messageID and before) then
+                if (foundMessage < message and not before) or (message > messageID and before) then
+                    foundMessage = message
+                    foundMessageSource = "reciever"
+                end
+                break
+            end
+        end
+    end
+
+    if foundMessage then
+        if foundMessageSource == "sender" then
+            return self.fromID(sender, reciever, foundMessage)
+        elseif foundMessageSource == "Reciever" then
+            return self.fromID(reciever, sender, foundMessage)
+        else
+            return false
+        end
+    else
+        return false
+    end
+
+end
+
+function database.getMessage.fromID(sender, reciever, messageID, both)
     local messagePath = "users/"..sender .. "/chats/" .. reciever .. "/messages/"..messageID.."/messageData"
     if not fs.getInfo(messagePath) then return false, "could not find message path" end
     local serializedMessage = fs.read(messagePath)
@@ -328,10 +384,6 @@ function database.getMessage.fromID(sender, reciever, messageID)
     returnTable.message = message
     returnTable.sender = sender
     return returnTable
-end
-
-function database.getMessage.afterID(sender, reciever, messageID)
-
 end
 
 -- database location: ~/.local/share/love/LOVME_server
