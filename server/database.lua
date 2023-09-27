@@ -34,7 +34,7 @@ local function test_username(username)
 end
 
 -- create a profile for a user in the database
-function database.createUserProfile(username, pass, databasePublicKey)
+function database.createUserProfile(username, pass, databaseSalt)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
     
@@ -55,6 +55,8 @@ function database.createUserProfile(username, pass, databasePublicKey)
     if status == false then return false, "failed to create user directory" end
     local status = fs.createDirectory(userpath.."/chats")
     if status == false then return false, "failed to create messages directory" end
+
+    
     
     -- save data in database (filesystem)
     local saveTable = {}
@@ -63,6 +65,9 @@ function database.createUserProfile(username, pass, databasePublicKey)
 
     -- database public key for the user
     -- used for decrpyting conversations
+    local databasePrivateKey = zen.argon2i(pass, databaseSalt, ARGON_KB, ARGON_I)
+    local databasePublicKey = zen.x25519_public_key(databasePrivateKey)
+    saveTable.DatabaseSalt = databaseSalt
     saveTable.DatabasePublicKey = databasePublicKey
 
     local savedUserData = bitser.dumps(saveTable)
@@ -72,7 +77,7 @@ function database.createUserProfile(username, pass, databasePublicKey)
 end
 
 -- same as rm -r 
-local function recursiveRemove(path)
+local function recursiveRemove(path, dontRemoveRoot)
     local pathInfo = fs.getInfo(path)
     if not pathInfo then return false, "path does not exist" end
     if pathInfo.type == "file" then
@@ -83,7 +88,12 @@ local function recursiveRemove(path)
     for i,v in ipairs(files) do
         recursiveRemove(path.."/"..v)
     end
-    return fs.remove(path)
+
+    if not dontRemoveRoot then
+        return fs.remove(path)
+    else
+        return true
+    end
 end
 
 
@@ -121,6 +131,24 @@ function database.getPublicKey(username)
         return false, "deserialization fail"
     end
     local pubKey = result.DatabasePublicKey
+    if not pubKey then
+        return false, "no public database key found"
+    end
+
+    return true, pubKey
+end
+
+function database.getDatabaseSalt(username)
+    local userpath = "users/"..username
+    if not fs.getInfo(userpath.."/userdata") then return false, "failed to load user data" end
+    local rawUserData = fs.read(userpath.."/userdata")
+    if not rawUserData then return false, "failed to read userdata" end
+
+    local status, result = pcall( function() return bitser.loads(rawUserData) end)
+    if status == false or not result then
+        return false, "deserialization fail"
+    end
+    local pubKey = result.DatabaseSalt
     if not pubKey then
         return false, "no public database key found"
     end
@@ -233,11 +261,15 @@ function database.getMessage:Last(sender, reciever, both)
             else
                 return self:Last(sender, reciever)
             end
+        elseif #senderMessages == 0 then
+            return self:Last(reciever, sender)
         end
+
+
 
         -- set lastSenderMessage to the largest number in senderMessages
         local lastSenderMessage = senderMessages[1]
-        for i,v in senderMessages do
+        for i,v in pairs(senderMessages) do
             local messageTime = tonumber(v)
             if lastSenderMessage < messageTime then
                 lastSenderMessage = messageTime
@@ -245,8 +277,8 @@ function database.getMessage:Last(sender, reciever, both)
         end
 
         -- set lastRecieverMessage to the largest number in recieverMessages
-        local lastRecieverMessage = recieverMessages[1]
-        for i,v in recieverMessages do
+        local lastRecieverMessage = tonumber(recieverMessages[1])
+        for i,v in pairs(recieverMessages) do
             local messageTime = tonumber(v)
             if lastRecieverMessage < messageTime then
                 lastRecieverMessage = messageTime

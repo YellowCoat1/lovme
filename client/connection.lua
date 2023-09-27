@@ -26,6 +26,8 @@ local ARGON_I = 15
 local session_id = nil
 local shared_key = nil
 local database_shared_keys = {}
+local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
+
 local database_secret = nil
 local database_public = nil
 
@@ -34,10 +36,14 @@ local last_server_active = love.timer.getTime()
 local function messageFromServer(data)
     if not shared_key then return false end
     last_server_active = love.timer.getTime()
-    if data then
-        local status, data = crypto.decrypt(data, shared_key)
-        if not status or not data then return false end
-        return true, data
+    if data then 
+        local status, result = pcall(function()
+            local status, data = crypto.decrypt(data, shared_key)
+            if not status or not data then return false end
+            return true, data
+        end)
+        if not status then return false end
+        return true, result
     end
     return true
 end
@@ -63,19 +69,25 @@ function connection:login(username, password)
     local sendTable = {}
     sendTable.user = username
     sendTable.pass = password
-    
-    local bytes16Salt = zen.randombytes(16)
-    database_secret = zen.argon2i(sendTable.pass, bytes16Salt, ARGON_KB, ARGON_I)
-    database_public = zen.x25519_public_key(database_secret)
 
-    sendTable.database_key_salt = bytes16Salt
+    database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
+    database_public = zen.x25519_public_key(database_secret)
     
+
     local status = sendToServer("login", sendTable)
     if not status then return false, "server send failed" end
 
     login_username = username
     loggedIn = true
     return true
+end
+
+function connection.registerUser(username, password)
+    local sendTable = {}
+    sendTable.username = username
+    sendTable.password = password
+    sendTable.databaseSalt = database_salt
+    sendToServer("register", sendTable)
 end
 
 -- function connection:logout()
@@ -135,6 +147,20 @@ function connection.setMessageResponse(messageResponseFunction)
     return true
 end
 
+local function softDisconnect() end
+function connection.setSoftDisconnect(softDisconnectFunction)
+    if type(softDisconnectFunction) ~= "function" then return false end
+    softDisconnect = softDisconnectFunction
+    return true
+end
+local function hardDisconnect() end
+function connection.hardDisconnect(hardDisconnectFunction)
+    if type(hardDisconnectFunction) ~= "function" then return false end
+    hardDisconnect = hardDisconnectFunction
+    return true
+end
+
+
 sock_client:on("connect", function()
     messageFromServer()
     local sendTable = {}
@@ -149,8 +175,8 @@ sock_client:on("key_response", function(data)
     connection.connectionEstablished = true
 end)
 
-sock_client:on("login-success", function()
-    messageFromServer()
+sock_client:on("login-success", function(data)
+    data = messageFromServer(data)
     loginResponse()
 end)
 
@@ -174,7 +200,9 @@ sock_client:on("message_response", function(data)
 
     local databaseSharedKey = database_shared_keys[data.other]
     local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
-    local message = bitser.loads(serializedMessage)
+    print(databaseSharedKey)
+    local status, message = pcall(bitser.loads, serializedMessage)
+    if not status then return print("o no") end
     messageResponse(message)
 end)
 
@@ -209,10 +237,15 @@ function connection.update()
 
     sock_client:update()
 
+    local time = love.timer.getTime()
     local roundTripTime = 0.03 --sock_client:getRoundTripTime() / 1000
     local timeout = roundTripTime + 1
-    if last_server_active + timeout < love.timer.getTime() then
+    if last_server_active + timeout < time then
         sendToServer("ping", {})
+    elseif last_server_active + 10 < time then
+        softDisconnect()
+    elseif last_server_active + 20 < time then
+        hardDisconnect()
     end
 end
 

@@ -55,6 +55,14 @@ local function user_message(data, client)
     else client:send("usr_error_de", "malformed_req") end
 end
 
+local function sendToUser(client, activeUser, message, sendTable)
+    if not client or not activeUser then return false end
+    local status, result = crypto.encrypt(sendTable, activeUser.sharedKey)
+    if not status then return false end
+    client:send(message, result)
+    return true
+end
+
 local function userSendError(client, activeUser, message)
     if not client or not activeUser or type(message) ~= "string" then return false end
     local status, result = crypto.encrypt({message}, activeUser.sharedKey)
@@ -98,7 +106,17 @@ local function userLogin(data, client)
         return false
     end
 
-    client:send("login-success")
+
+    local sendTable = {}
+    sendTable.username = data.user
+    sendTable.password = data.pass
+
+    status, result = database.getDatabaseSalt(data.user)
+    if status and result then
+        sendTable.salt = result
+    end
+
+    sendToUser(client, activeUser, "login-success", sendTable)
 
     return true
 end
@@ -211,18 +229,18 @@ local function registerUser(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    local loginUsername, loginPass, loginDatabasePublicKey = data.username, data.password, data.dbPk
+    local loginUsername, loginPass, loginDatabaseSalt = data.username, data.password, data.databaseSalt
 
-    if not loginUsername or not loginPass or not loginDatabasePublicKey then 
+    if not loginUsername or not loginPass or not loginDatabaseSalt then
+        print("e")
         userSendError(client, activeUser, "malformed_message")
         return
     end
 
-    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabasePublicKey)
-    if not status then userSendError(client, activeUser, "reg_fail") end
+    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabaseSalt)
+    if not status then userSendError(client, activeUser, "reg_fail") return end
 
     client:send("register_sucess")
-    return
 end
 
 -- connect user functions to sock.lua callbacks
