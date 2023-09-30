@@ -125,6 +125,20 @@ function connection.request_message(reciever)
     return true
 end
 
+function connection.request_message_next(reciever, messageID)
+    if not connection.connectionEstablished then return false, "connection not established" end
+    if not login_username then return false, "no username" end
+    if not reciever then return false, "invalid arguments" end
+    local sendTable = {}
+    sendTable.messageType = "next_id"
+    sendTable.sender = login_username
+    sendTable.reciever = reciever
+    sendTable.messageID = messageID
+    sendToServer("message_req", sendTable)
+    return true
+end
+
+
 function connection.sendStringMessage(recipiant, message)
     if not loggedIn then return false, "not_logged_in" end
     local database_shared_key = database_shared_keys[recipiant]
@@ -210,11 +224,14 @@ sock_client:on("message_response", function(data)
     local status, data = crypto.decrypt(data, shared_key)
     if not status or not data then print(data) return end
 
+    
     local databaseSharedKey = database_shared_keys[data.other]
     if not databaseSharedKey then print("WARN: ".."no_shared_key") return end
     local serializedMessage = zen.decrypt(databaseSharedKey, data.message.nonce, data.message.data)
+    
+    print(databaseSharedKey, data.message.nonce, data.message.data, type(serializedMessage))
     local status, message = pcall(bitser.loads, serializedMessage)
-    if not status then return print("o no", zen.b64encode(database_salt)) end
+    if not status then return print("ERROR") end
     messageResponse(message)
 end)
 

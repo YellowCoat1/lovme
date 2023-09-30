@@ -203,7 +203,7 @@ local function message_request(data, client)
         status, err = database.getMessage.fromID(username, data.reciever, data.messageID)
     elseif data.messageType == "next_id" then
         if not data.messageID then userSendError(client, activeUser, "malformed_message") return end
-        status, err = database.getMessage.nextID(username, data.reciever, data.messageID)
+        status, err = database.getMessage:next(username, data.reciever, data.messageID, true, true)
     end
 
     if not status then userSendError(client, activeUser, "message_err: "..err) return end

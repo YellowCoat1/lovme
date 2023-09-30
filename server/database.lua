@@ -325,8 +325,10 @@ function database.getMessage:next(sender, reciever, messageID, before, both)
     local senderPath = "users/"..sender.."/"
     local senderMessagePath = senderPath .."chats/"..reciever.."/messages/"
     if not fs.getInfo(senderPath) then return false, "failed to get sender user directory" end 
+
     if not fs.getInfo(senderMessagePath) then return false, "failed to get sender messages directory" end
-    local messagePath = senderMessagePath .. "messageID"
+    
+    local messagePath = senderMessagePath .. messageID
     if not fs.getInfo(messagePath) then return false, "failed to get message path" end 
 
     messageID = tonumber(messageID)
@@ -336,7 +338,7 @@ function database.getMessage:next(sender, reciever, messageID, before, both)
     -- find next message in sender message dir
     local message
     local senderMessageList = fs.getDirectoryItems(senderMessagePath)
-    for i,v in senderMessageList do
+    for i,v in pairs(senderMessageList) do
         message = tonumber(v)
         if (message > messageID and not before) or (message < messageID and before) then
             foundMessage = message
@@ -353,12 +355,12 @@ function database.getMessage:next(sender, reciever, messageID, before, both)
         -- paths and checks for reciever
         local recieverPath = "users/"..reciever.."/"
         local recieverMessagePath = recieverPath .."chats/"..sender.."/messages/"
-        if not fs.getInfo(reciever) then return false, "failed to get sender user directory" end 
+        if not fs.getInfo(recieverPath) then return false, "failed to get sender user directory" end 
         if not fs.getInfo(recieverMessagePath) then return false, "failed to get sender messages directory" end
 
 
         local recieverMessageList = fs.getDirectoryItems(recieverMessagePath)
-        for i,v in recieverMessageList do
+        for i,v in pairs(recieverMessageList) do
             message = tonumber(v)
             if (message > messageID and not before) or (message < messageID and before) then
                 if (foundMessage < message and not before) or (message > messageID and before) then
@@ -381,7 +383,6 @@ function database.getMessage:next(sender, reciever, messageID, before, both)
     else
         return false
     end
-
 end
 
 function database.getMessage.fromID(sender, reciever, messageID, both)
