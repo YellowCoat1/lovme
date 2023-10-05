@@ -242,15 +242,15 @@ end
 
 -- connect user functions to sock.lua callbacks
 local function loadServerCallbacks()
-    LovmeServer:on("ping", emptyPing)
+    -- LovmeServer:on("ping", function(data, client) pcall(emptyPing, data, client) end ) -- send a user a ping
     LovmeServer:on("connect", function() end) -- empty connect function, purely to suppress errors
     LovmeServer:on("disconnect", function() end) -- empty disconnect function, purely to suppress errors
-    LovmeServer:on("connected", userConnect)
-    LovmeServer:on("login", userLogin)
-    LovmeServer:on("message_send", message_send)
-    LovmeServer:on("database_public_key_req", database_public_key_request)
-    LovmeServer:on("message_req", message_request)
-    LovmeServer:on("register", registerUser)
+    LovmeServer:on("connected", function(data, client) pcall(userConnect, data, client) end) -- on user connect
+    LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
+    LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
+    LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request) end)
+    LovmeServer:on("message_req", function(data, client) pcall(message_request, data, client) end)
+    -- LovmeServer:on("register", function(data, client) pcall(registerUser, data, client) end) -- user register
 end
 
 -- -- on load

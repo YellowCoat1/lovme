@@ -236,7 +236,7 @@ sock_client:on("message_response", function(data)
     
     print(databaseSharedKey, data.message.nonce, data.message.data, type(serializedMessage))
     local status, message = pcall(bitser.loads, serializedMessage)
-    if not status then return print("ERROR") end
+    if not status then return print("ERROR: invalid_message_key") end
     messageResponse(message)
 end)
 
