@@ -5,7 +5,7 @@ package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
 local connection = require 'connection'
--- local gui = require 'gui'
+local gui = require 'gui'
 
 local getTime = love.timer.getTime
 
@@ -61,10 +61,6 @@ function love.update()
     end
 end
 
--- function love.update(dt)
---     connection.update()
--- end
-
--- function love.draw()
---     gui.draw()
--- end
+function love.draw()
+    gui.draw()
+end
