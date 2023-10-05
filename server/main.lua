@@ -51,7 +51,7 @@ local function user_message(data, client)
     local key = ActiveUsers[sessionID].sharedKey
     ActiveUsers[sessionID]:updateActive()
     local status, decryptedData = crypto.decrypt(data.data, key)
-    if status == true then return true, decryptedData, sessionID
+    if status == true then return true, decryptedData, sessionID 
     else client:send("usr_error_de", "malformed_req") end
 end
 
@@ -109,7 +109,6 @@ local function userLogin(data, client)
 
     local sendTable = {}
     sendTable.username = data.user
-    sendTable.password = data.pass
 
     status, result = database.getDatabaseSalt(data.user)
     if status and result then
