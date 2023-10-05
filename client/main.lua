@@ -4,30 +4,31 @@ local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
-local luatz = require 'luatz'
 local connection = require 'connection'
 -- local gui = require 'gui'
 
-local getTime = luatz.time
+local getTime = love.timer.getTime
 
 
 local timerState = 0
 local timerOffset = getTime()
 local dtimer = 0
 
+function love.load()
+    connection.setLoginResponse(function()
+        print("login has been responsed")
+    end)
+    connection.setMessageResponse(function(message)
+        print(message.data)
+    end)
+    connection.setKeyResponse(function(data, user)
+        print("key response from user "..user)
+    end)
 
-connection.setLoginResponse(function()
-    print("login has been responsed")
-end)
-connection.setMessageResponse(function(message)
-    print(message.data)
-end)
-connection.setKeyResponse(function(data, user)
-    print("key response from user "..user)
-end)
+end
 
 
-while true do 
+function love.update()
     connection.update()
     dtimer = getTime() - timerOffset
 

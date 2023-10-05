@@ -4,10 +4,9 @@ local eventQueue = {}
 -- libraries
 local sock = require 'sock'
 local zen = require 'luazen'
-local luatz = require 'luatz'
 local crypto = require 'crypto'
 
-local getTime = luatz.time
+local getTime = love.timer.getTime
 
 -- connection to server
 local SERVER_PORT = 22123
