@@ -172,6 +172,13 @@ function connection.setMessageResponse(messageResponseFunction)
     return true
 end
 
+local function keyResponse(key, username) end
+function connection.setKeyResponse(keyResponseFunction)
+    if type(keyResponseFunction) ~= "function" then return false end
+    keyResponse = keyResponseFunction
+    return true
+end
+
 local function softDisconnect() end
 function connection.setSoftDisconnect(softDisconnectFunction)
     if type(softDisconnectFunction) ~= "function" then return false end
@@ -220,6 +227,8 @@ sock_client:on("db_key_response", function(data)
     local database_shared_key = zen.key_exchange(database_secret, reciever_database_public_key)
 
     database_shared_keys[data.replyUsername] = database_shared_key
+
+    keyResponse(database_shared_key, data.replyUsername)
 
     return true
 end)

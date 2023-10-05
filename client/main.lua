@@ -22,6 +22,9 @@ end)
 connection.setMessageResponse(function(message)
     print(message.data)
 end)
+connection.setKeyResponse(function(data, user)
+    print("key response from user "..user)
+end)
 
 
 while true do 
@@ -40,7 +43,7 @@ while true do
         print("key", connection.request_database_public_key("user2"))
     elseif dtimer > 2.5 and timerState == 3 then
         timerState = timerState + 1
-        print("send", connection.request_message_next("user2", "169579779013"))
+        print("send", connection.request_message("user2"))
     -- elseif dtimer > 3 and timerState == 4 then
         -- timerState = timerState + 1
         -- print("request", connection.request_message("user2"))
