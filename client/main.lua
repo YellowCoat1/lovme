@@ -4,25 +4,29 @@ local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
 
+local luatz = require 'luatz'
 local connection = require 'connection'
-local gui = require 'gui'
+-- local gui = require 'gui'
+
+local getTime = luatz.time
+
 
 local timerState = 0
+local timerOffset = getTime()
 local dtimer = 0
 
 
-function love.load(args)
-    connection.setLoginResponse(function()
-        print("login has been responsed")
-    end)
-    connection.setMessageResponse(function(message)
-        print(message.data)
-    end)
-end
+connection.setLoginResponse(function()
+    print("login has been responsed")
+end)
+connection.setMessageResponse(function(message)
+    print(message.data)
+end)
 
-function love.update(dt)
+
+while true do 
     connection.update()
-    dtimer = dtimer + dt
+    dtimer = getTime() - timerOffset
 
     if dtimer > 1 and timerState == 0 then
         timerState = 1
@@ -30,16 +34,16 @@ function love.update(dt)
         -- print("register", connection.registerUser("user2", "password"))
     elseif dtimer > 1.5 and timerState == 1 then
         timerState = timerState + 1
-        -- print("login", connection:login("user1", "password"))
+        print("login", connection:login("user1", "password"))
     elseif dtimer > 2 and timerState == 2 then
         timerState = timerState + 1
-        -- print("key", connection.request_database_public_key("user2"))
+        print("key", connection.request_database_public_key("user2"))
     elseif dtimer > 2.5 and timerState == 3 then
         timerState = timerState + 1
-        -- print("send", connection.request_message_next("user2", "169579779013"))
+        print("send", connection.request_message_next("user2", "169579779013"))
     -- elseif dtimer > 3 and timerState == 4 then
-    --     timerState = timerState + 1
-    --     print("request", connection.request_message("user2"))
+        -- timerState = timerState + 1
+        -- print("request", connection.request_message("user2"))
     -- elseif dtimer > 3.5 and timerState == 5 then
     --     timerState = timerState + 1
     --     connection:logout()
@@ -51,5 +55,12 @@ function love.update(dt)
     --     timerState = timerState + 1
     --     print("request", connection.request_message("user1"))
     end
-    
 end
+
+-- function love.update(dt)
+--     connection.update()
+-- end
+
+-- function love.draw()
+--     gui.draw()
+-- end

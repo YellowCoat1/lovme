@@ -1,42 +1,45 @@
 local connection = {}
-
 local eventQueue = {}
 
+-- libraries
 local sock = require 'sock'
 local zen = require 'luazen'
-
+local luatz = require 'luatz'
 local crypto = require 'crypto'
 
-local SERVER_PORT = 22123
+local getTime = luatz.time
 
+-- connection to server
+local SERVER_PORT = 22123
 local sock_client = sock.newClient("localhost", SERVER_PORT)
 sock_client:connect()
 
+-- general conversation cryptography
 local client_secret_key, client_public_key = crypto.gen_keys()
 connection.public_keys = {}
-
 connection.connectionEstablished = false
 
-local loggedIn
-local login_username
-
+-- pre-set argon arguments
 local ARGON_KB = 5000
 local ARGON_I = 15
 
+-- connection state
+connection.loggedIn = false
+local login_username
 local session_id = nil
 local shared_key = nil
+local last_server_active = getTime()
+
+-- user message cryptography
 local database_shared_keys = {}
-
 local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
-
 local database_secret = nil
 local database_public = nil
 
-local last_server_active = love.timer.getTime()
 
 local function messageFromServer(data)
     if not shared_key then return false end
-    last_server_active = love.timer.getTime()
+    last_server_active = getTime()
     if data then 
         local status, result = pcall(function()
             local status, data = crypto.decrypt(data, shared_key)
@@ -57,32 +60,29 @@ local function sendToServer(message, sendData)
 
     local sendTable = {}
     sendTable.SID = session_id
-    sendTable.data = {}
     local status
     status, sendTable.data = crypto.encrypt(sendData, shared_key)
     if not status then return false end
+    
     sock_client:send(message, sendTable)
     return true
 end
 
 function connection:login(username, password)
-    if not connection.connectionEstablished then return false, "connection not established" end
-    local sendTable = {}
-    sendTable.user = username
-    sendTable.pass = password
-
-    
     
     if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
     elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
     database_public = zen.x25519_public_key(database_secret)
 
+    sendTable = {}
+    sendTable.user = username
+    sendTable.pass = password
     local status = sendToServer("login", sendTable)
+    print(status)
     if not status then return false, "server send failed" end
 
     login_username = username
-    loggedIn = true
     return true
 end
 
@@ -100,12 +100,13 @@ function connection:logout()
     database_secret = nil
     database_public = nil
     loginUsername = nil
+    loggedIn = false
     database_shared_keys = {}
 end
 
 function connection.request_database_public_key(username)
     if not connection.connectionEstablished then return false, "connection not established" end
-    if not loggedIn then return false, "not logged in" end
+    if not connection.loggedIn then return false, "not loggedIn" end
     local sendTable = {}
     sendTable.requestedUsername = username
     local status = sendToServer("database_public_key_req", sendTable)
@@ -115,6 +116,7 @@ end
 
 function connection.request_message(reciever)
     if not connection.connectionEstablished then return false, "connection not established" end
+    if not connection.loggedIn then return false, "not loggedIn" end
     if not login_username then return false, "no username" end
     if not reciever then return false, "invalid arguments" end
     local sendTable = {}
@@ -127,6 +129,7 @@ end
 
 function connection.request_message_next(reciever, messageID)
     if not connection.connectionEstablished then return false, "connection not established" end
+    if not connection.loggedIn then return false, "not loggedIn" end
     if not login_username then return false, "no username" end
     if not reciever then return false, "invalid arguments" end
     local sendTable = {}
@@ -198,7 +201,9 @@ sock_client:on("key_response", function(data)
 end)
 
 sock_client:on("login-success", function(data)
+    connection.loggedIn = true
     status, data = messageFromServer(data)
+    login_username = data.username
     database_salt = data.salt 
     loginResponse()
 end)
@@ -262,18 +267,19 @@ end)
 
 
 
-function connection.update()
+function connection:update()
 
     sock_client:update()
 
-    local time = love.timer.getTime()
+    local time = getTime()
     local roundTripTime = 0.03 --sock_client:getRoundTripTime() / 1000
-    local timeout = roundTripTime + 1
+    local timeout = roundTripTime + 5
     if last_server_active + timeout < time then
         sendToServer("ping", {})
     elseif last_server_active + 10 < time then
         softDisconnect()
     elseif last_server_active + 20 < time then
+        self.connectionEstablished = false
         hardDisconnect()
     end
 end
