@@ -3,6 +3,9 @@
 local libPath = "libs"
 package.cpath = package.cpath .. ';./' .. libPath .. '/?.so'
 package.path = package.path .. ';./' .. libPath .. '/?.lua'
+local srcPath = "src"
+package.cpath = package.cpath .. ';./' .. srcPath .. '/?.so'
+package.path = package.path .. ';./' .. srcPath .. '/?.lua'
 
 local connection = require 'connection'
 local gui = require 'gui'
