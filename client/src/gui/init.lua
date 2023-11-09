@@ -1,5 +1,10 @@
 local gui = {}
 
+local clickable = require 'gui.clickable'
+local textBar = require 'gui.textBar'
+
+local tab = require `gui.tab`
+
 local color1 = {27,45,72}
 local color2 = {44,69,107}
 local color3 = {60,100,169}
@@ -10,13 +15,14 @@ local bubble = love.graphics.newImage("assets/bubble.png")
 local gear = love.graphics.newImage("assets/gear.png")
 
 local getTime = love.timer.getTime
-local time = getTime()
+local time
 local abs = math.abs
 
+-- storing window width and height
 local width = love.graphics.getWidth()
 local height = love.graphics.getHeight()
 
--- main | chat | settings
+-- loading | main | chat | settings
 local guiState = "main"
 
 -- colors here are a table of values from 0 to 255
@@ -30,11 +36,16 @@ end
 -- contact list
 local contactList = {} --cashed.getContactList()
 
+local mainClickables = {}
+local tempClickables = {}
+local textBoxList = {}
+
 -- linear interpolation
 local function lerp(start, stop, input)
     return (start + (stop - start) * input);
 end
 
+-- start a notification
 local function notifStart(message)
     guiState.notif.on = true
     guiState.notif.t = 5
@@ -71,35 +82,29 @@ local function drawNotif()
     -- if the notif is not on
     if not notif.on or notif.t <= time then return end
     if notif.t + 3 > relativeTimer then notif.on = false end
-
 end
 
 
-local function drawMain()
-
-    -- bottom bar
-    do 
-        coloredSquare(color2, 0, 600, width, 100)
-        coloredVerticalLine(color3, 600)
-        coloredLine(color3, width/2, 600, width/2, height)
-        love.graphics.draw(bubble, width/6.5, 610, 0, 0.5, 0.5, 32, 64)
-        love.graphics.draw(gear, width/1.45, 627, 0, 0.25, 0.25, 32, 64)
-    end
-
-
+local function drawBottomBar()
+    coloredSquare(color2, 0, 600, width, 100)
+    coloredVerticalLine(color3, 600)
+    coloredLine(color3, width/2, 600, width/2, height)
+    love.graphics.draw(bubble, width/6.5, 610, 0, 0.5, 0.5, 32, 64)
+    love.graphics.draw(gear, width/1.45, 627, 0, 0.25, 0.25, 32, 64)
 end
 
-local function drawChat()
+table.insert(mainClickables, clickable(0, 600, width/2, 700-600, function() 
+    tab.startMainGUI() 
+end))
+table.insert(mainClickables, clickable(width/2, 600, width/2, 700-600, function() 
+    tab.startSettingsGUI() 
+end))
 
-end
-
-local function drawSettings()
-
-end
-
+startMainGUI()
 
 function gui.draw()
     love.graphics.setBackgroundColor(unpackColor(color1))
+    drawBottomBar()
 
     if guiState == "main" then
         drawMain()
@@ -108,6 +113,19 @@ function gui.draw()
     -- coloredSquare(color2, 10, 70, 50, 50)
     -- coloredSquare(color3, 10, 130, 50, 50)
     -- coloredSquare(color4, 10, 190, 50, 50)
+end
+
+function gui.mousePressed(x, y, button)
+    if button ~= 1 then return end
+    for i,textbox in ipairs(textBoxList) do 
+        textbox:mousePress(x,y)
+    end
+    for i,workingClickable in ipairs(mainClickables) do 
+        workingClickable:mousePress(x,y)
+    end
+    for i,workingClickable in ipairs(tempClickables) do 
+        workingClickable:mousePress(x,y)
+    end
 end
 
 

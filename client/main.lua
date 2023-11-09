@@ -7,8 +7,9 @@ local srcPath = "src"
 package.cpath = package.cpath .. ';./' .. srcPath .. '/?.so'
 package.path = package.path .. ';./' .. srcPath .. '/?.lua'
 
+Object = require 'classic'
 local connection = require 'connection'
-local gui = require 'gui'
+local gui = require 'gui.init'
 
 local getTime = love.timer.getTime
 
@@ -35,35 +36,29 @@ function love.update()
     connection.update()
     dtimer = getTime() - timerOffset
 
-    if dtimer > 1 and timerState == 0 then
-        timerState = 1
-        -- print("register", connection.registerUser("user1", "password"))
-        -- print("register", connection.registerUser("user2", "password"))
-    elseif dtimer > 1.5 and timerState == 1 then
-        timerState = timerState + 1
-        print("login", connection:login("user1", "password"))
-    elseif dtimer > 2 and timerState == 2 then
-        timerState = timerState + 1
-        print("key", connection.request_database_public_key("user2"))
-    elseif dtimer > 2.5 and timerState == 3 then
-        timerState = timerState + 1
-        print("send", connection.request_message("user2"))
-    -- elseif dtimer > 3 and timerState == 4 then
-        -- timerState = timerState + 1
-        -- print("request", connection.request_message("user2"))
-    -- elseif dtimer > 3.5 and timerState == 5 then
+
+
+
+    -- if dtimer > 1 and timerState == 0 then
+    --     timerState = 1
+    --     -- print("register", connection.registerUser("user1", "password"))
+    --     -- print("register", connection.registerUser("user2", "password"))
+    -- elseif dtimer > 1.5 and timerState == 1 then
     --     timerState = timerState + 1
-    --     connection:logout()
-    --     print("login", connection:login("user2", "password"))
-    -- elseif dtimer > 4 and timerState == 6 then
+    --     print("login", connection:login("user1", "password"))
+    -- elseif dtimer > 2 and timerState == 2 then
     --     timerState = timerState + 1
-    --     print("key", connection.request_database_public_key("user1"))
-    -- elseif dtimer > 4.5 and timerState == 7 then
+    --     print("key", connection.request_database_public_key("user2"))
+    -- elseif dtimer > 2.5 and timerState == 3 then
     --     timerState = timerState + 1
-    --     print("request", connection.request_message("user1"))
-    end
+    --     print("send", connection.request_message("user2"))
+    -- end
 end
 
 function love.draw()
     gui.draw()
+end
+
+function love.mousepressed(x, y, button)
+    gui.mousePressed(x,y,button)
 end
