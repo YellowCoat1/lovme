@@ -1,6 +1,8 @@
 local clickable = require 'gui.clickable'
 local textBar = clickable:extend()
 
+local capitals = require 'capitals'
+local isDown = love.keyboard.isDown
 -- preset height for textbars
 local HEIGHT = Font:getHeight("i") * 0.75
 
@@ -130,7 +132,11 @@ function textBar:keypress(key)
     if not self.active or not self.typeable then return end
 
     if #key == 1 then
-        self:typeKey(key)
+        if isDown("lshift") or isDown("rshift") then
+            self:typeKey(capitals[key])
+        else
+            self:typeKey(key)
+        end
     elseif key == "space" then 
         self:typeKey(" ")
     elseif key == "tab" then
