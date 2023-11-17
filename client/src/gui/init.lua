@@ -1,18 +1,22 @@
 local gui = {}
 
-local clickable = require 'gui.clickable'
-local textBar = require 'gui.textBar'
-
-local tab = require `gui.tab`
-
 local color1 = {27,45,72}
 local color2 = {44,69,107}
 local color3 = {60,100,169}
 local color4 = {71,121,196}
 
-local font = love.graphics.newFont("assets/Roboto-Regular.ttf")
+-- font is global
+love.keyboard.setKeyRepeat(true)
+Font = love.graphics.newFont("assets/Roboto-Regular.ttf", 64)
+love.graphics.setFont(Font)
 local bubble = love.graphics.newImage("assets/bubble.png")
 local gear = love.graphics.newImage("assets/gear.png")
+
+
+local clickable = require 'gui.clickable'
+local textBar = require 'gui.textBar'
+local tab = require 'gui.tab'
+
 
 local getTime = love.timer.getTime
 local time
@@ -37,8 +41,6 @@ end
 local contactList = {} --cashed.getContactList()
 
 local mainClickables = {}
-local tempClickables = {}
-local textBoxList = {}
 
 -- linear interpolation
 local function lerp(start, stop, input)
@@ -94,38 +96,35 @@ local function drawBottomBar()
 end
 
 table.insert(mainClickables, clickable(0, 600, width/2, 700-600, function() 
-    tab.startMainGUI() 
+    tab.setScreen("main") 
 end))
 table.insert(mainClickables, clickable(width/2, 600, width/2, 700-600, function() 
-    tab.startSettingsGUI() 
+    tab.setScreen("settings") 
 end))
 
-startMainGUI()
 
 function gui.draw()
     love.graphics.setBackgroundColor(unpackColor(color1))
     drawBottomBar()
 
-    if guiState == "main" then
-        drawMain()
-    end
+    tab.draw()
+    
     -- coloredSquare(color1, 10, 10, 50, 50)
     -- coloredSquare(color2, 10, 70, 50, 50)
     -- coloredSquare(color3, 10, 130, 50, 50)
     -- coloredSquare(color4, 10, 190, 50, 50)
 end
 
+function gui.keypressed(key)
+    tab.keypressed(key)
+end
+
 function gui.mousePressed(x, y, button)
     if button ~= 1 then return end
-    for i,textbox in ipairs(textBoxList) do 
-        textbox:mousePress(x,y)
-    end
     for i,workingClickable in ipairs(mainClickables) do 
         workingClickable:mousePress(x,y)
     end
-    for i,workingClickable in ipairs(tempClickables) do 
-        workingClickable:mousePress(x,y)
-    end
+    tab.mouseClick(x, y)
 end
 
 

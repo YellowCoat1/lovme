@@ -59,6 +59,10 @@ function love.draw()
     gui.draw()
 end
 
+function love.keypressed(key)
+    gui.keypressed(key)
+end
+
 function love.mousepressed(x, y, button)
     gui.mousePressed(x,y,button)
 end
