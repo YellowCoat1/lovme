@@ -35,4 +35,9 @@ function Screen:draw()
     for _,v in ipairs(self.textBoxes) do
         v:draw()
     end
+    self:setDraw()
+end
+
+function Screen:setDraw()
+
 end

@@ -25,15 +25,15 @@ local ARGON_I = 15
 -- connection state
 connection.loggedIn = false
 local login_username
-local session_id = nil
-local shared_key = nil
+local session_id
+local shared_key
 local last_server_active = getTime()
 
 -- user message cryptography
 local database_shared_keys = {}
 local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
-local database_secret = nil
-local database_public = nil
+local database_secret
+local database_public
 
 
 local function messageFromServer(data)
@@ -157,6 +157,12 @@ function connection.sendStringMessage(recipiant, message)
     if not status then return false, "server send failed" end
 end
 
+function connection.request_contact_list()
+    if not loggedIn then return false, "not_logged_in" end
+    local sendTable = {}
+    sendToServer("request_contact_list", sendTable)
+end
+
 
 local function loginResponse() end
 function connection.setLoginResponse(loginResponseFunction)
@@ -175,6 +181,19 @@ local function keyResponse(key, username) end
 function connection.setKeyResponse(keyResponseFunction)
     if type(keyResponseFunction) ~= "function" then return false end
     keyResponse = keyResponseFunction
+    return true
+end
+
+local function contactListResponse() end
+local function contactListFailResponse() end
+function connection.setContactListResponse(setResponseFunction, setFailFunction)
+    if type(setResponseFunction) ~= "function" then 
+        return false 
+    end
+    contactListResponse = setResponseFunction
+    if setFailFunction then
+        contactListFailResponse = setFailFunction
+    end
     return true
 end
 
@@ -246,6 +265,16 @@ sock_client:on("message_response", function(data)
     local status, message = pcall(bitser.loads, serializedMessage)
     if not status then return print("ERROR: invalid_message_key") end
     messageResponse(message)
+end)
+
+sock_client:on("contact_list_reply", function(data) 
+    local contact_list = messageFromServer(data)
+    if contact_list then 
+        contactListResponse(contact_list)
+    else
+        contactListFailResponse()
+        return 
+    end
 end)
 
 sock_client:on("ping", function()

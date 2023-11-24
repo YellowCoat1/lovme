@@ -12,6 +12,8 @@ love.graphics.setFont(Font)
 local bubble = love.graphics.newImage("assets/bubble.png")
 local gear = love.graphics.newImage("assets/gear.png")
 
+local cached = require 'cached'
+local connection = require 'connection'
 
 local clickable = require 'gui.clickable'
 local textBar = require 'gui.textBar'
@@ -38,7 +40,15 @@ end
 
 
 -- contact list
-local contactList = {} --cashed.getContactList()
+local contactList = cached.getValue("contactList")
+-- if it fails use an empty table
+if not contactList then
+    contactList = {}
+    connection.request_contact_list(contactList)
+    connection.setContactListResponse(function(data) 
+        contactList = data
+    end)
+end
 
 local mainClickables = {}
 

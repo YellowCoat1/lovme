@@ -4,9 +4,10 @@ local textBar = clickable:extend()
 local capitals = require 'capitals'
 local isDown = love.keyboard.isDown
 -- preset height for textbars
-local HEIGHT = Font:getHeight("i") * 0.75
+local HEIGHT = Font:getHeight("iTLE| $!`")
+local abs = math.abs
 
-function textBar:new(x, y, width, wraparound, text, defaultActive, limit, typeable)
+function textBar:new(x, y, width, wraparound, defaultActive, typeable)
     if not (x or y or width) then print("no.") love.event.exit(1) return end
     
     self.super:new(x, y, width, HEIGHT, function() self.active = true end, function() self.active = false end)
@@ -29,7 +30,8 @@ function textBar:new(x, y, width, wraparound, text, defaultActive, limit, typeab
 
     self.wraparound = wraparound
     self.fragments = {}
-    self.limit = limit or 0
+    self.limit = 0
+    self.lineLimit = 0
     self.wrapCursorPosX, self.wrapCursorPosY = 0, 0
 
     if wraparound then
@@ -51,6 +53,7 @@ end
 
 function textBar:remapFragments()
     if not self.wraparound then return end
+
     local lastFragment = 0
     self.fragments = {}
     for i=1,#self.text do
@@ -62,30 +65,165 @@ function textBar:remapFragments()
             lastFragment = i
         end
     end
+    if self.text:sub(#self.text, #self.text) == string.char(10) or #self.fragments == 0 then
+        table.insert(self.fragments, "")
+    end
+
+    self:setInteractHeight(HEIGHT * #self.fragments)
 end
 
 -- find the cursor position in wrapped text
+-- returns the fragment index and charachter offset
 function textBar:findWrappedCursorPosition()
+    if self.selected == 0 then return 1,0 end
+    
+    if self.selected > #self.text then
+        print("INVALID CURSOR POSITION")
+        self.selected = #self.text
+    end
+
     local cursorPosCounter = self.selected
     self.wrapCursorPosX, self.wrapCursorPosY = 0, 0
-    for _,fragment in ipairs(self.fragments) do
+    for index,fragment in ipairs(self.fragments) do
         if cursorPosCounter - #fragment > 0 then
             cursorPosCounter = cursorPosCounter - #fragment
-            self.wrapCursorPosY = self.wrapCursorPosY + HEIGHT
+        elseif fragment:sub(cursorPosCounter,cursorPosCounter) == string.char(10) then
+            return index+1, 0
         else
-            self.wrapCursorPosX = Font:getWidth(fragment:sub(0, cursorPosCounter))
-            break
+            return index, cursorPosCounter
         end
+    end
+end
+
+function textBar:findWrappedCursorXY()
+    local fragmentIndex, charOffset = self:findWrappedCursorPosition() 
+    local fragment = self.fragments[fragmentIndex] or ""
+    self.wrapCursorPosX = Font:getWidth(fragment:sub(0, charOffset))
+    self.wrapCursorPosY = HEIGHT * (fragmentIndex-1)
+end
+
+function textBar:cursorUp()
+    
+    -- if you're at the first line then set cursor to the start
+    if fragmentIndex == 1 then self.selected = 0 return end
+
+    local fragmentIndex, charOffset = self:findWrappedCursorPosition()
+    
+    -- finds the width of the charachters up until the cursor
+    local charWidth
+    if charOffset == 0 then
+        charWidth = 0 -- if you're at the beginning of the line the width is 0
+    else 
+        charWidth = Font:getWidth(self.fragments[fragmentIndex]:sub(1, charOffset))
+    end
+
+    local lastLine = self.fragments[fragmentIndex-1]
+
+    -- if we're at the first line, just go to the start.
+    if fragmentIndex == 1 then 
+        self.selected = 0
+        return
+    end
+
+    -- if the width of the last line is less than the needed width then we just go to the end of that
+    local lastLineShort = Font:getWidth(lastLine) < charWidth
+    -- if the width of the current line is zero
+    local nothingAtCurrentLine = charWidth == 0
+    local goingToLastLine = false
+    if lastLineShort then
+        -- sets the cursor to the end of the last line by subtracting the char offset 
+        self.selected = self.selected - charOffset
+        goingToLastLine = true
+    elseif nothingAtCurrentLine then
+        self.selected = self.selected - #lastLine
+    else
+
+        for i=0,#lastLine do
+            if Font:getWidth(lastLine:sub(1,i+1)) >= charWidth then
+                local neededChar
+                if abs(Font:getWidth(lastLine:sub(1,i)) - charWidth) < abs(Font:getWidth(lastLine:sub(1,i+1)) - charWidth) then
+                    self.selected = self.selected - (charOffset + (#lastLine - i))
+                else
+                    self.selected = self.selected - (charOffset + (#lastLine - i) - 1)
+                end
+                -- goingToLastLine = true
+                break
+            end
+        end
+    end
+
+    if goingToLastLine and lastLine:sub(#lastLine, #lastLine) == string.char(10) then
+        self.selected = self.selected - 1
+    end
+
+end
+
+function textBar:cursorDown()
+        
+    local fragmentIndex, charOffset = self:findWrappedCursorPosition()
+    
+    if fragmentIndex >= #self.fragments then 
+        self.selected = #self.text
+        return
+    end
+
+    local thisLine = self.fragments[fragmentIndex]
+    local nextLine = self.fragments[fragmentIndex+1]
+    
+    -- finds the width of the charachters up until the cursor
+    local charWidth
+    if charOffset == 0 then
+        charWidth = 0 -- if you're at the beginning of the line the width is 0
+    else 
+        charWidth = Font:getWidth(thisLine:sub(1, charOffset))
+    end
+
+
+    -- if the width of the last line is less than the needed width then we just go to the end of that
+    local nextLineShort = Font:getWidth(nextLine) < charWidth
+    -- if the width of the current line is zero
+    local nothingAtCurrentLine = charWidth == 0
+    
+    local goingToNextLine = false
+    if #nextLine == 0 then
+        -- print("AAAAAAAAAAA")
+        self.selected = self.selected + (#thisLine - charOffset)
+        goingToNextLine = true
+    elseif nextLineShort then
+        -- sets the cursor to the end of the next line by adding the remaining charachter
+        self.selected = self.selected + (#thisLine - charOffset) + #nextLine
+        if nextLine:sub(#nextLine, #nextLine) == string.char(10) then
+            self.selected = self.selected - 1
+        end
+        -- goingToLastLine = true
+    elseif nothingAtCurrentLine then
+        self.selected = self.selected + (#thisLine - charOffset)
+    else
+        for i=1,#nextLine do
+            if Font:getWidth(nextLine:sub(1,i)) >= charWidth then
+                local neededChar
+                if abs(Font:getWidth(nextLine:sub(1,i-1)) - charWidth) < abs(Font:getWidth(nextLine:sub(1,i+1)) - charWidth) then
+                    self.selected = self.selected +  (#thisLine - charOffset) + (i - 1)
+                else
+                    self.selected = self.selected + (#thisLine - charOffset) + i
+                end
+                break
+            end
+        end
+    end
+
+    if goingToLastLine and thisLine:sub(#thisLine, #thisLine) == string.char(10) then
+        self.selected = self.selected + 1
     end
 
 end
 
 function textBar:drawText()
     if not self.wraparound then
-        love.graphics.print(self.text, self.x, self.y-13, nil, 1, 1)
+        love.graphics.print(self.text, self.x, self.y, nil, 1, 1)
     else
         for i,v in ipairs(self.fragments) do
-            love.graphics.print(v, self.x, self.y-13 + (i-1)*HEIGHT, nil, 1, 1)
+            love.graphics.print(v, self.x, self.y + (i-1)*HEIGHT, nil, 1, 1)
         end
     end
 end
@@ -103,7 +241,6 @@ function textBar:drawCursor()
 end
 
 function textBar:draw()
-
     self:drawText()
     if not self.active then return end
     self:drawCursor()
@@ -149,13 +286,49 @@ function textBar:keypress(key)
         self.selected = self.selected - 1
     elseif key == "right" and self.selected < #self.text then
         self.selected = self.selected + 1
+    elseif key == "up" and self.wraparound then
+        self:cursorUp()
+    elseif key == "down" and self.wraparound then
+        self:cursorDown()
     end
 
+    if #self.fragments > self.lineLimit and self.lineLimit ~= 0 then
+        self:removeKey()
+    end
+    
     if self.wraparound then
-        self:findWrappedCursorPosition()
+        self:findWrappedCursorXY()
     end
 
+end
 
+function textBar:getHeight()
+    return #self.fragments * HEIGHT
+end
+
+function textBar:setLimit(limit)
+    self.limit = limit
+end
+
+function textBar:setLineLimit(lineLimit)
+    self.lineLimit = lineLimit
+end
+
+function textBar:setText(text,setCursor)
+    if setCursor ~= false then setCursor = true end
+
+    self.text = text
+
+    local textLowerThanCursor = self.selected > #text
+
+    if setCursor or textLowerThanCursor then 
+        self.selected = #text 
+    end 
+    
+    if self.wraparound then
+        self:remapFragments()
+        self:findWrappedCursorXY()
+    end
 end
 
 return textBar
