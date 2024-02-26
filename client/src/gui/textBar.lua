@@ -7,20 +7,30 @@ local isDown = love.keyboard.isDown
 local HEIGHT = Font:getHeight("iTLE| $!`")
 local abs = math.abs
 
-function textBar:new(x, y, width, wraparound, defaultActive, typeable)
+-- x and y for the coordinates of the top left of the text bar
+-- width is for how wide (x-direction wise) the text box is.
+-- wraparound is for if text should wrap.
+-- default active is setting it to be selected when initialized
+-- typeable is if the user can type in it
+-- text color is a table containing three values, representing the color of the text
+function textBar:new(x, y, width, wraparound, defaultActive, typeable, textColor)
     if not (x or y or width) then print("no.") love.event.exit(1) return end
-    
-    self.super:new(x, y, width, HEIGHT, function() self.active = true end, function() self.active = false end)
+    self.super.new(self, x, y, width, HEIGHT, 
+        function() self.active = true end,
+        function() self.active = false end)
     
     self.x = x
     self.y = y
     self.width = width
+    self.textColor = textColor
     
     self.active = defaultActive or false
     self.superActiveTimer = os.time()
     
     self.text = text or ""
     self.selected = #self.text
+
+    self.enterFunction = function() end
 
     if typeable == false then 
         self.typeable = false
@@ -37,20 +47,11 @@ function textBar:new(x, y, width, wraparound, defaultActive, typeable)
     if wraparound then
         self:remapFragments()
         self:findWrappedCursorPosition()
-    end 
-
-    local function clickedFunction()
-        self.active = true
     end
-
-    local function notClickedFunction()
-        self.active = false
-    end
-
-
 
 end
 
+-- re-calculate fragments of a wrapped text
 function textBar:remapFragments()
     if not self.wraparound then return end
 
@@ -95,6 +96,7 @@ function textBar:findWrappedCursorPosition()
     end
 end
 
+-- finds the cursor's x and y in wrapped text 
 function textBar:findWrappedCursorXY()
     local fragmentIndex, charOffset = self:findWrappedCursorPosition() 
     local fragment = self.fragments[fragmentIndex] or ""
@@ -102,6 +104,7 @@ function textBar:findWrappedCursorXY()
     self.wrapCursorPosY = HEIGHT * (fragmentIndex-1)
 end
 
+-- in response to an up arrow, move the cursor up
 function textBar:cursorUp()
     
     -- if you're at the first line then set cursor to the start
@@ -157,7 +160,8 @@ function textBar:cursorUp()
     end
 
 end
-
+ 
+-- in response to a down arrow, move the cursor down
 function textBar:cursorDown()
         
     local fragmentIndex, charOffset = self:findWrappedCursorPosition()
@@ -218,34 +222,40 @@ function textBar:cursorDown()
 
 end
 
+-- draws the text (and only the text)
 function textBar:drawText()
     if not self.wraparound then
+        -- if text is not wrapped, it can just be printed.
         love.graphics.print(self.text, self.x, self.y, nil, 1, 1)
     else
+        -- if text is wrapped, every fragment must be printed
         for i,v in ipairs(self.fragments) do
             love.graphics.print(v, self.x, self.y + (i-1)*HEIGHT, nil, 1, 1)
         end
     end
 end
 
+-- draws the cursor on the screen
 function textBar:drawCursor()
     if self.typeable == false then return end
 
     if not self.wraparound then 
         -- set cursor offset to the width of the text until the selected
         local cursorOffset = Font:getWidth(self.text:sub(1, self.selected))
-        love.graphics.rectangle("fill", cursorOffset, self.y, 5, HEIGHT)
+        love.graphics.rectangle("fill", self.x+cursorOffset, self.y, 5, HEIGHT)
     else
         love.graphics.rectangle("fill", self.x+self.wrapCursorPosX, self.y+self.wrapCursorPosY, 5, HEIGHT)
     end
 end
 
+-- draws the text bar on the screen
 function textBar:draw()
     self:drawText()
     if not self.active then return end
     self:drawCursor()
 end
 
+-- add a key to the text bar
 function textBar:typeKey(key)
 
     -- quit if limit has been reached
@@ -257,6 +267,7 @@ function textBar:typeKey(key)
     self:remapFragments()
 end
 
+-- removes a key from the text bar
 function textBar:removeKey()
     -- set the text to (the text before one spot before the marker) + (the text after the marker)
     self.text = self.text:sub(1, self.selected-1) .. self.text:sub(self.selected + 1, #self.text)
@@ -265,6 +276,7 @@ function textBar:removeKey()
     self:remapFragments()
 end
 
+-- handle when a key is pressed and add a letter if applicable 
 function textBar:keypress(key)
     if not self.active or not self.typeable then return end
 
@@ -280,8 +292,11 @@ function textBar:keypress(key)
         self:typeKey("    ")
     elseif key == "backspace" and #self.text > 0 and self.selected > 0 then
         self:removeKey()
-    elseif key == "return" and self.wraparound then
-        self:typeKey(string.char(10))
+    elseif key == "return" then
+        self.enterFunction()
+        if self.wraparound then
+            self:typeKey(string.char(10))
+        end
     elseif key == "left" and self.selected > 0 then
         self.selected = self.selected - 1
     elseif key == "right" and self.selected < #self.text then
@@ -302,6 +317,10 @@ function textBar:keypress(key)
 
 end
 
+function textBar:setEnterFunction(enterFunction)
+    self.enterFunction = enterFunction
+end
+
 function textBar:getHeight()
     return #self.fragments * HEIGHT
 end
@@ -314,7 +333,8 @@ function textBar:setLineLimit(lineLimit)
     self.lineLimit = lineLimit
 end
 
-function textBar:setText(text,setCursor)
+-- set the text of the text bar
+function textBar:setText(text, setCursor)
     if setCursor ~= false then setCursor = true end
 
     self.text = text

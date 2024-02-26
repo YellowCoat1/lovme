@@ -68,7 +68,8 @@ local function sendToServer(message, sendData)
 end
 
 function connection:login(username, password)
-    
+    if not username or not password then return false end
+
     if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
     elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
@@ -101,6 +102,10 @@ function connection:logout()
     loginUsername = nil
     loggedIn = false
     database_shared_keys = {}
+end
+
+function connection:setAddress(address)
+    sock_client = sock.newClient(address, SERVER_PORT)
 end
 
 function connection.request_database_public_key(username)
@@ -163,6 +168,12 @@ function connection.request_contact_list()
     sendToServer("request_contact_list", sendTable)
 end
 
+function connection.contactAdd(contactName)
+    if not loggedIn then return false, "not_logged_in" end
+    local sendTable = {}
+    sendTable.contact = contactName
+    sendToServer("request_add_contact", sendTable)
+end
 
 local function loginResponse() end
 function connection.setLoginResponse(loginResponseFunction)
@@ -196,6 +207,14 @@ function connection.setContactListResponse(setResponseFunction, setFailFunction)
     end
     return true
 end
+
+local function contactAddResponse() end
+function connection.setContactAddResponse(contactResponseFunction)
+    if type(contactResponseFunction) ~= "function" then return false end
+    contactAddResponse = contactResponseFunction
+    return true
+end
+
 
 local function softDisconnect() end
 function connection.setSoftDisconnect(softDisconnectFunction)
@@ -274,6 +293,13 @@ sock_client:on("contact_list_reply", function(data)
     else
         contactListFailResponse()
         return 
+    end
+end)
+
+sock_client:on("contact_add_reply", function(data)
+    local contactResponse = messageFromServer(data)
+    if contactResponse then
+        contactAddResponse()
     end
 end)
 

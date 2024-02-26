@@ -13,7 +13,6 @@ local gui = require 'gui.init'
 
 local getTime = love.timer.getTime
 
-
 local timerState = 0
 local timerOffset = getTime()
 local dtimer = 0
@@ -28,17 +27,12 @@ function love.load()
     connection.setKeyResponse(function(data, user)
         print("key response from user "..user)
     end)
-
 end
 
 
-function love.update()
+function love.update(dt)
     connection.update()
     dtimer = getTime() - timerOffset
-
-
-
-
     -- if dtimer > 1 and timerState == 0 then
     --     timerState = 1
     --     -- print("register", connection.registerUser("user1", "password"))
