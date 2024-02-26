@@ -18,9 +18,6 @@ local timerOffset = getTime()
 local dtimer = 0
 
 function love.load()
-    connection.setLoginResponse(function()
-        print("login has been responsed")
-    end)
     connection.setMessageResponse(function(message)
         print(message.data)
     end)

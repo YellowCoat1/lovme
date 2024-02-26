@@ -104,6 +104,13 @@ function connection:logout()
     database_shared_keys = {}
 end
 
+-- purely for testing purposes, logs you in immediately
+function connection:forceLogin()
+    loggedIn = true
+    loginUsername = "testUser"
+    connection.loginResponse()
+end
+
 function connection:setAddress(address)
     sock_client = sock.newClient(address, SERVER_PORT)
 end
@@ -175,16 +182,16 @@ function connection.contactAdd(contactName)
     sendToServer("request_add_contact", sendTable)
 end
 
-local function loginResponse() end
-function connection.setLoginResponse(loginResponseFunction)
+function connection.loginResponse() end
+function connection:setLoginResponse(loginResponseFunction)
     if type(loginResponseFunction) ~= "function" then return false end
-    loginResponse = loginResponseFunction
+    self.loginResponse = loginResponseFunction
     return true
 end
-local function messageResponse(data) end
-function connection.setMessageResponse(messageResponseFunction)
+function connection.messageResponse(data) end
+function connection:setMessageResponse(messageResponseFunction)
     if type(messageResponseFunction) ~= "function" then return false end
-    messageResponse = messageResponseFunction
+    self.messageResponse = messageResponseFunction
     return true
 end
 
@@ -249,7 +256,7 @@ sock_client:on("login-success", function(data)
     status, data = messageFromServer(data)
     login_username = data.username
     database_salt = data.salt 
-    loginResponse()
+    connection.loginResponse()
 end)
 
 sock_client:on("db_key_response", function(data)
@@ -283,7 +290,7 @@ sock_client:on("message_response", function(data)
     print(databaseSharedKey, data.message.nonce, data.message.data, type(serializedMessage))
     local status, message = pcall(bitser.loads, serializedMessage)
     if not status then return print("ERROR: invalid_message_key") end
-    messageResponse(message)
+    connection.messageResponse(message)
 end)
 
 sock_client:on("contact_list_reply", function(data) 

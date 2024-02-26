@@ -43,19 +43,25 @@ function login:draw()
     end
 end
 
+function login:loginAttempt()
+    local connectionReqStatus = connection:login(username, password)
+
+    -- temp autologin
+    connection:forceLogin()
+    return
+    
+    if not connectionReqStatus then
+        responseTimer = love.timer.getTime() + 2
+        responseText = "server error :P"
+        responseText2 = "(are you connected?)"
+    end
+end
+
 function login.keypressed(key)
     local username =  usernameTextbar.text
     local password = passwordTextbar.text
     if key == "return" and username ~= "" and password ~= "" then
-        local connectionReqStatus = connection:login(username, password)
-        if not connectionReqStatus then
-            responseTimer = love.timer.getTime() + 2
-            responseText = "server error :P"
-            responseText2 = "(are you connected?)"
-        end
-        -- -- clear username and text bar
-        -- usernameTextbar:setText("")
-        -- passwordTextbar:setText("")
+        login:loginAttempt()
     end
     for _,textBox in ipairs(textBoxes) do
         textBox:keypress(key)
