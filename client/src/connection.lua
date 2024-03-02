@@ -5,6 +5,7 @@ local eventQueue = {}
 local sock = require 'sock'
 local zen = require 'luazen'
 local crypto = require 'crypto'
+local cached = require 'cached'
 
 local getTime = love.timer.getTime
 
@@ -34,6 +35,9 @@ local database_shared_keys = {}
 local database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
 local database_secret
 local database_public
+
+local temp_username_store = ""
+local temp_password_store = ""
 
 
 local function messageFromServer(data)
@@ -69,9 +73,16 @@ end
 
 function connection:login(username, password)
     if not username or not password then return false end
+    temp_username_store, temp_password_store = "", ""
 
-    if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
-    elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
+    local database_salt = cached.getValue("database_salt")
+    if not database_salt then 
+        temp_username_store, temp_password_store = username, password
+        self.request_database_salt()
+        return true, "salt_req"
+    end
+
+    -- print(database_salt)
     database_secret = zen.argon2i(password, database_salt, ARGON_KB, ARGON_I)
     database_public = zen.x25519_public_key(database_secret)
 
@@ -79,7 +90,6 @@ function connection:login(username, password)
     sendTable.user = username
     sendTable.pass = password
     local status = sendToServer("login", sendTable)
-    print(status)
     if not status then return false, "server send failed" end
 
     login_username = username
@@ -88,8 +98,6 @@ end
 
 function connection.registerUser(username, password)
     local sendTable = {}
-    if username == "user1" then database_salt = zen.b64decode("AAAAAAAAAAAAAAAAAAAAAA==")
-    elseif username == "user2" then database_salt = zen.b64decode("BBBBBBBBBBBBBBBBBBBBBA==") end
     sendTable.username = username
     sendTable.password = password
     sendTable.databaseSalt = database_salt
@@ -121,6 +129,15 @@ function connection.request_database_public_key(username)
     local sendTable = {}
     sendTable.requestedUsername = username
     local status = sendToServer("database_public_key_req", sendTable)
+    if not status then return false, "server send failed" end
+    return true
+end
+
+function connection.request_database_salt(username)
+    if not connection.connectionEstablished then return false, "connection not established" end
+    local sendTable = {}
+    sendTable.username = username
+    local status = sendToServer("database_salt_req", sendTable)
     if not status then return false, "server send failed" end
     return true
 end
@@ -188,6 +205,14 @@ function connection:setLoginResponse(loginResponseFunction)
     self.loginResponse = loginResponseFunction
     return true
 end
+function connection:setLoginFailResponse(loginFailResponse)
+    if type(loginFailResponse) ~= "function" then return false end
+    self.loginFailResponse = loginFailResponse
+    return true
+end
+
+
+
 function connection.messageResponse(data) end
 function connection:setMessageResponse(messageResponseFunction)
     if type(messageResponseFunction) ~= "function" then return false end
@@ -259,6 +284,12 @@ sock_client:on("login-success", function(data)
     connection.loginResponse()
 end)
 
+sock_client:on("login-fail", function()
+    -- status, data = messageFromServer(data)
+    temp_username_store, temp_password_store = "", ""
+    connection.loginFailResponse()
+end)
+
 sock_client:on("db_key_response", function(data)
     messageFromServer()
     local status, data = crypto.decrypt(data, shared_key)
@@ -275,6 +306,16 @@ sock_client:on("db_key_response", function(data)
     keyResponse(database_shared_key, data.replyUsername)
 
     return true
+end)
+
+sock_client:on("db_salt", function(data) 
+    local data = messageFromServer(data)
+    if not status or not data then print(data) return end
+    local salt = data.salt
+    lstatus = cached.setValue("database_salt", salt)
+    connection:login(temp_username_store, temp_password_store)
+
+
 end)
 
 sock_client:on("message_response", function(data)
@@ -294,7 +335,7 @@ sock_client:on("message_response", function(data)
 end)
 
 sock_client:on("contact_list_reply", function(data) 
-    local contact_list = messageFromServer(data)
+    local status, contact_list = messageFromServer(data)
     if contact_list then 
         contactListResponse(contact_list)
     else
@@ -304,7 +345,7 @@ sock_client:on("contact_list_reply", function(data)
 end)
 
 sock_client:on("contact_add_reply", function(data)
-    local contactResponse = messageFromServer(data)
+    local status, contactResponse = messageFromServer(data)
     if contactResponse then
         contactAddResponse()
     end

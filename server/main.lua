@@ -60,7 +60,7 @@ local function sendToUser(client, activeUser, message, sendTable)
     local status, result = crypto.encrypt(sendTable, activeUser.sharedKey)
     if not status then return false end
     client:send(message, result)
-    return true
+    return true, "guacamole"
 end
 
 local function userSendError(client, activeUser, message)
@@ -102,7 +102,9 @@ local function userLogin(data, client)
     if status and result then
         activeUser.loggedInUsername = data.user
     else
-        userSendError(client, activeUser, "rejected_pass")
+        sendTable = {}
+        sendTable.username = data.user
+        sendToUser(client, activeUser, "login-fail", sendTable)
         return false
     end
 
@@ -151,6 +153,24 @@ local function message_send(data, client)
     client:send("message_send_success", encryptedSendTable)
 end
 
+local function database_salt_request(data, client)
+    local sessionID, status, result
+    status, data, sessionID = user_message(data, client)
+    if not status or not data then return false end
+    local activeUser = ActiveUsers[sessionID]
+
+    local username = data.user
+    local salt = database.getDatabaseSalt(username)
+
+    if salt then
+        local sendTable = {}
+        local sendTable.salt = salt
+        sendToUser(client, activeUser, "db_salt", sendTable)
+    else
+        sendToUser(client, activeUser, "login-fail", {}) 
+    end
+end
+
 local function database_public_key_request(data, client)
     local sessionID, status, result
     status, data, sessionID = user_message(data, client)
@@ -166,9 +186,8 @@ local function database_public_key_request(data, client)
     local sendTable = {}
     sendTable.returnKey = result
     sendTable.replyUsername = data.requestedUsername
-    local status, encryptedSendTable = crypto.encrypt(sendTable, activeUser.sharedKey)
-    if not status then return end
-    client:send("db_key_response", encryptedSendTable)
+
+    sendToUser(client, activeUser, "db_key_res", sendTable)
 end
 
 local function message_request(data, client)
@@ -216,7 +235,6 @@ local function message_request(data, client)
     status, result = crypto.encrypt(sendTable, activeUser.sharedKey)
     if not status then return end
     client:send("message_response", result)
-
 end
 
 local function registerUser(data, client)
@@ -225,19 +243,21 @@ local function registerUser(data, client)
     if not status or not data then return false end
     local activeUser = ActiveUsers[sessionID]
 
-    local loginUsername, loginPass, loginDatabaseSalt = data.username, data.password, data.databaseSalt
-    result = loginDatabaseSalt
-    if not loginUsername or not loginPass or not loginDatabaseSalt then
+    local loginUsername, loginPass, loginDatabaseSalt, loginPubKey = data.username, data.password, data.databaseSalt, data.databasePublicKey
+
+    if not loginUsername or not loginPass or not loginDatabaseSalt or not loginPubKey then
         
         userSendError(client, activeUser, "malformed_message")
         return
     end
 
-    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabaseSalt)
-    if not status then userSendError(client, activeUser, "reg_fail") return end
-    
+    status, result = database.createUserProfile(loginUsername, loginPass, loginDatabaseSalt, loginPubKey)
+    if not status then 
+        sendToUser(client, activeUser, "reg-fail", sendTable)
+        return 
+    end
 
-    client:send("register_sucess")
+    sendToUser(client, activeUser, "reg-success", sendTable)
 end
 
 -- connect user functions to sock.lua callbacks
@@ -248,9 +268,9 @@ local function loadServerCallbacks()
     LovmeServer:on("connected", function(data, client) pcall(userConnect, data, client) end) -- on user connect
     LovmeServer:on("login", function(data, client) pcall(userLogin, data, client) end) -- on user login attempt
     LovmeServer:on("message_send", function(data, client) pcall(message_send, data, client) end) -- on user message send
-    LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end)
-    LovmeServer:on("message_req", function(data, client) pcall(message_request, data, client) end)
-    -- LovmeServer:on("register", function(data, client) pcall(registerUser, data, client) end) -- user register
+    LovmeServer:on("database_public_key_req", function(data, client) pcall(database_public_key_request, data, client) end) --request public key of a user
+    LovmeServer:on("message_req", function(data, client) pcall(message_request, data, client) end) -- request a message
+    LovmeServer:on("register", function(data, client) pcall(registerUser, data, client) end) -- user register
 end
 
 -- -- on load
@@ -262,8 +282,8 @@ function love.load(arg)
 
     loadServerCallbacks()
 
-    -- testing client connection
-    
+    local databaseSalt = zen.randombytes(32)
+    database.createUserProfile("username", "pass", databaseSalt)
 end
 
 function ClientUpdate(id, activeUser, time)

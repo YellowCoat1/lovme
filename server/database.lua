@@ -33,8 +33,16 @@ local function test_username(username)
         
 end
 
+--[[
+    The following fields are in every userdata:
+        passHash: the hashed version of the password to be checked against.
+        salt: salt for the hashed pass, so same passwords don't have the same hash.
+        databasePublicKey: The database public key, used for a database key exchange, for individual message encryption
+        databaseSalt: The salt for the database public key
+--]]
+
 -- create a profile for a user in the database
-function database.createUserProfile(username, pass, databaseSalt)
+function database.createUserProfile(username, pass, databaseSalt, database_public)
     if not username then return false, "absent username" end
     if not pass then return false, "absent password" end
     

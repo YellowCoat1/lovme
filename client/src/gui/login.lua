@@ -6,63 +6,177 @@ local connection = require 'connection'
 local textBar = require 'gui.textBar'
 local textBoxes = {}
 
-local responseTimer = love.timer.getTime()
-local responseText = ""
-local responseText2 = ""
+local loginResponseTimer = love.timer.getTime()
+local registerResponseTimer = love.timer.getTime()
 
-local usernameTextbar = textBar(0, 135, love.graphics.getWidth(), false, true, true, "color1")
+-- stores the status text shown for login/register
+local loginResponseText = {"lorum ipsum", "lorum ipsum"}
+local registerResponseText = {"lorum ipsum", "lorum ipsum"}
+
+local loginY = 65
+local registerY = 350
+
+-- login textbars
+local usernameTextbar = textBar(0, loginY+70, love.graphics.getWidth(), false, true, true, "color1")
 usernameTextbar:setText("(user)")
 usernameTextbar:setLimit(16)
 table.insert(textBoxes, usernameTextbar)
 
-local passwordTextbar = textBar(0, 225, love.graphics.getWidth(), false, false, true, "color1")
+local passwordTextbar = textBar(0, loginY+160, love.graphics.getWidth(), false, false, true, "color1")
 passwordTextbar:setText("(pass)")
 passwordTextbar:setLimit(16)
 table.insert(textBoxes, passwordTextbar)
+
+-- register textbars
+local usernameRegTextbar = textBar(0, registerY+70, love.graphics.getWidth(), false, false, true, "color1")
+usernameTextbar:setText("(user)")
+usernameTextbar:setLimit(16)
+table.insert(textBoxes, usernameRegTextbar)
+
+local passwordRegTextbar = textBar(0, registerY+160, love.graphics.getWidth(), false, false, true, "color1")
+passwordTextbar:setText("(pass)")
+passwordTextbar:setLimit(16)
+table.insert(textBoxes, passwordRegTextbar)
+
+-- on login fail
+connection:setLoginFailResponse(function()
+    -- displays login fail text 
+    login.loginFail()
+end)
+
+local function drawLogin()
+    drawingHelper:text("Login", "color2", 0, loginY)
+
+    drawingHelper:square("color2", 0, loginY+70, love.graphics.getWidth(), Font:getHeight("|"))
+    drawingHelper:text("Username:", "color3", 0, loginY + 35)
+    
+    drawingHelper:square("color2", 0, loginY+160, love.graphics.getWidth(), Font:getHeight("|"))
+    drawingHelper:text("Password:", "color3", 0, loginY + 125)
+
+    if loginResponseTimer > love.timer.getTime() then
+        love.graphics.print(loginResponseText[1], 200, loginY)
+        love.graphics.print(loginResponseText[2], 200, loginY + Font:getHeight("|") - 5)
+    end
+end
+
+local function drawRegister()
+    drawingHelper:text("Register", "color2", 0, registerY)
+
+    drawingHelper:square("color2", 0, registerY+70, love.graphics.getWidth(), Font:getHeight("|"))
+    drawingHelper:text("Username:", "color3", 0, registerY + 35)
+    
+    drawingHelper:square("color2", 0, registerY+160, love.graphics.getWidth(), Font:getHeight("|"))
+    drawingHelper:text("Password:", "color3", 0, registerY + 125)
+
+    if registerResponseTimer > love.timer.getTime() then
+        love.graphics.print(registerResponseText[1], 200, registerY)
+        love.graphics.print(registerResponseText[2], 200, registerY + Font:getHeight("|") - 5)
+    end
+end
 
 function login:draw()
     local screenWidth = love.graphics.getWidth()
     local fontHeight = Font:getHeight("|")
 
-    drawingHelper:square("color2", 0, 0, love.graphics.getWidth(), 70)
-    drawingHelper:text("ASDASDASD", "color4", 0, 0, 2)
+    -- drawingHelper:square("color2", 0, 0, love.graphics.getWidth(), 70)
+    drawingHelper:text("FUNKY APP", "color2", 0, 0, 2)
 
-    drawingHelper:square("color2", 0, 135, love.graphics.getWidth(), Font:getHeight("|"))
-    drawingHelper:text("Username:", "color3", 0, 100)
-
-    drawingHelper:square("color2", 0, 225, love.graphics.getWidth(), Font:getHeight("|"))
-    drawingHelper:text("Password:", "color3", 0, 190)
-
-    if responseTimer > love.timer.getTime() then
-        love.graphics.print(responseText, 0, 300)
-        love.graphics.print(responseText2, 0, 300 + Font:getHeight("|"))
-    end
+    drawLogin()
+    drawRegister()
 
     for _,textBox in ipairs(textBoxes) do
         textBox:draw()
     end
 end
 
-function login:loginAttempt()
-    local connectionReqStatus = connection:login(username, password)
-
-    -- temp autologin
-    connection:forceLogin()
-    return
-    
-    if not connectionReqStatus then
-        responseTimer = love.timer.getTime() + 2
-        responseText = "server error :P"
-        responseText2 = "(are you connected?)"
+local function arrowKeyPressed(key)
+    -- gets the currently selected textbox
+    local selectedTextbox 
+    for index,textBox in ipairs(textBoxes) do
+        if textBox.active then 
+            selectedTextbox = index
+            break
+        end
     end
+
+    -- if none are selected
+    if selectedTextbox == nil then
+        return
+    end
+
+    local moveUp = key == "up" and selectedTextbox ~= 1 
+    local moveDown = key == "down" and selectedTextbox ~= 4
+    
+    if moveUp then
+        textBoxes[selectedTextbox-1].active = true
+    elseif moveDown then
+        textBoxes[selectedTextbox+1].active = true
+    end
+
+    if moveUp or moveDown then
+        textBoxes[selectedTextbox].active = false
+    end
+end
+
+local function enterKeyPressed()
+    if usernameTextbar.active or passwordTextbar.active then
+        login:loginAttempt()
+    elseif usernameRegTextbar.active or passwordRegTextbar.active then
+        login:registerAttempt()
+    end
+end
+
+function login:registerAttempt()
+    if usernameRegTextbar.text == "" or passwordRegTextbar.text == "" then return end
+    usernameRegTextbar.text = ""
+    passwordRegTextbar.text = ""
+
+    -- local registerResult = connection:registerUser(username, login)
+
+    -- if not connection.login then
+        registerResponseTimer = love.timer.getTime() + 2
+        registerResponseText[1] = "server error :P"
+        registerResponseText[2] = "(are you connected?)"
+    -- end
+end
+
+
+function login:loginAttempt()
+    if usernameTextbar.text == "" or passwordTextbar.text == "" then return end
+    local username = usernameTextbar.text
+    local password = passwordTextbar.text
+    local connectionReqStatus = connection:login(username, password)
+    
+    -- temp autologin
+    -- connection:forceLogin()
+    -- do return end
+    
+    if connectionReqStatus then
+        passwordTextbar:setText("")
+        usernameTextbar:setText("")        
+    else
+        loginResponseTimer = love.timer.getTime() + 2
+        loginResponseText[1] = "server error :P"
+        loginResponseText[2] = "(are you connected?)"
+    end
+end
+
+function login.loginFail()
+    loginResponseTimer = love.timer.getTime() + 2
+    loginResponseText[1] = "login fail :("
+    loginResponseText[2] = "(is ur pass correct?)"
 end
 
 function login.keypressed(key)
     local username =  usernameTextbar.text
     local password = passwordTextbar.text
-    if key == "return" and username ~= "" and password ~= "" then
-        login:loginAttempt()
+
+    if key == "return" then
+        enterKeyPressed()
+    elseif key == "up" or key == "down" then
+        arrowKeyPressed(key)
     end
+
     for _,textBox in ipairs(textBoxes) do
         textBox:keypress(key)
     end

@@ -60,7 +60,7 @@ if loginCreds then
     connection:login(loginCreds.user, loginCreds.pass)
 end
 
-connection.setLoginResponse(function() 
+connection.setLoginResponse(function()
     currentTab = "main"
 end)
 
